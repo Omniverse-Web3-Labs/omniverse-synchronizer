@@ -27,7 +27,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev See IOmniverseProtocl
      */
-    function verifyTxSignature(OmniverseTokenProtocol calldata _data) external override returns (bool) {
+    function verifyTxSignature(OmniverseTokenProtocol calldata _data) external override returns (VerifyResult) {
         RecordedCertificate storage rc = transactionRecorder[_data.from];
         uint256 nonce = getTransactionCount(_data.from) + 1;
         
@@ -35,7 +35,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
         address recoveredAddress = recoverAddress(txHash, data.signature);
         // Signature verified failed
         if (!isPkMatched(_data.from, recoveredAddress)) {
-            return false;
+            return VerifyResult.PkNotMatch;
         }
 
         // Check nonce
@@ -52,13 +52,16 @@ contract OmniverseProtocol is IOmniverseProtocol {
             if (hisTxHash != txHash) {
                 // to be continued, add to evil list, but can not be duplicated
                 // EvilTxData storage evilTx = evilTxList.
-                return false;
+                return VerifyResult.Malicious;
+            }
+            else {
+                return VerifyResult.Duplicated;
             }
         }
         else {
-            return false;
+            return VerifyResult.NonceError;
         }
-        return false;
+        return VerifyResult.Success;
     }
 
     /**
