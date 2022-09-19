@@ -15,8 +15,8 @@ contract OmniverseProtocol is IOmniverseProtocol {
     }
 
     struct RecordedCertificate {
-        uint256 nonce;
-        address evmAddress;
+        // uint256 nonce;
+        // address evmAddress;
         OmniverseTx[] txList;
         EvilTxData[] evilTxList;
     }
@@ -29,16 +29,36 @@ contract OmniverseProtocol is IOmniverseProtocol {
      */
     function verifyTxSignature(OmniverseTokenProtocol calldata _data) external override returns (bool) {
         RecordedCertificate storage rc = transactionRecorder[_data.from];
-        // Check nonce
-        if (rc.nonce == _data.nonce) {
-            bytes32 hash = getTransactionHash(_data);
+        uint256 nonce = getTransactionCount(_data.from) + 1;
+        
+        bytes32 txHash = getTransactionHash(_data);
+        address recoveredAddress = recoverAddress(txHash, data.signature);
+        // Signature verified failed
+        if (!isPkMatched(_data.from, recoveredAddress)) {
+            return false;
         }
-        else if (rc.nonce > _data.nonce) {
 
+        // Check nonce
+        if (nonce == _data.nonce) {
+            // Add to transaction recorder
+            OmniverseTx storage omniTx = rc.txList.push();
+            omniTx.timestamp = block.timestamp;
+            omniTx.txData = _data;
+        }
+        else if (nonce > _data.nonce) {
+            // The message has been received, check conflicts
+            OmniverseTx storage hisTx = rc.txList[_data.nonce];
+            bytes32 hisTxHash = getTransactionHash(hisTx.txData);
+            if (hisTxHash != txHash) {
+                // to be continued, add to evil list, but can not be duplicated
+                // EvilTxData storage evilTx = evilTxList.
+                return false;
+            }
         }
         else {
             return false;
         }
+        return false;
     }
 
     /**
@@ -62,5 +82,21 @@ contract OmniverseProtocol is IOmniverseProtocol {
             v := mload(add(_signature, 65))
         }
         return ecrecover(_hash, v, r, s);
+    }
+
+    /**
+     * @dev Check if the public key matches the recovered address
+     */
+    function isPkMatched(bytes _publicKey, address _address) internal returns (bool) {
+        bytes32 hash = keccak256(_publicKey);
+        address pkAddress = address(uint160(bytes20(hash)));
+        return (_address == pkAddress);
+    }
+
+    /**
+     * @dev Returns the count of transactions
+     */
+    function getTransactionCount(bytes _publicKey) public returns (uint256) {
+        return transactionRecorder[_publicKey].txList.length;
     }
 }
