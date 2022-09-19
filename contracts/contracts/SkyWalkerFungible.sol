@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./interfaces/IOmniverseProtocol";
 
 contract SkyWalkerFungible is ERC20, Ownable {
+    IOmniverseProtocol public omniverseProtocol;
     mapping(string => string) members;
     mapping(bytes => uint256) omniverseBalances;
     mapping(bytes => uint256) prisons;
@@ -15,7 +16,7 @@ contract SkyWalkerFungible is ERC20, Ownable {
      * @dev Transfer omniverse tokens to a user
      */
     function omniverseTransfer(OmniverseTokenProtocol calldata _data) public {
-
+        // VerifyResult verifyRet = 
     }
 
     /**
@@ -36,4 +37,8 @@ contract SkyWalkerFungible is ERC20, Ownable {
     function omniverseBalanceOf(bytes calldata _pk) public returns (uint256) {
         return omniverseBalances[_pk];
     }
+
+    /**
+     * @dev 
+     */
 }
