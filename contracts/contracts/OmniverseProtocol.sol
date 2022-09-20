@@ -22,24 +22,28 @@ contract OmniverseProtocol is IOmniverseProtocol {
     }
 
     string public chainId;
+    uint256 public cdTime;
     mapping(bytes => RecordedCertificate) transactionRecorder;
 
     /**
      * @dev See IOmniverseProtocl
      */
-    function verifyTxSignature(OmniverseTokenProtocol calldata _data) external override returns (VerifyResult) {
+    function verifyTransaction(OmniverseTokenProtocol calldata _data) external override returns (VerifyResult) {
         RecordedCertificate storage rc = transactionRecorder[_data.from];
         uint256 nonce = getTransactionCount(_data.from) + 1;
         
-        bytes32 txHash = getTransactionHash(_data);
-        address recoveredAddress = recoverAddress(txHash, data.signature);
+        bytes32 txHash = _getTransactionHash(_data);
+        address recoveredAddress = _recoverAddress(txHash, data.signature);
         // Signature verified failed
-        if (!isPkMatched(_data.from, recoveredAddress)) {
-            return VerifyResult.PkNotMatch;
-        }
+        _checkPkMatched(_data.from, recoveredAddress);
 
         // Check nonce
         if (nonce == _data.nonce) {
+            uint256 lastestTxTime = 0;
+            if (rc.txList.length > 0) {
+                lastestTxTime = rc.txList[rc.txList.length - 1].timestamp;
+            }
+            require(block.timestamp >= lastestTxTime + cdTime, "Transaction cooling down");
             // Add to transaction recorder
             OmniverseTx storage omniTx = rc.txList.push();
             omniTx.timestamp = block.timestamp;
@@ -48,26 +52,33 @@ contract OmniverseProtocol is IOmniverseProtocol {
         else if (nonce > _data.nonce) {
             // The message has been received, check conflicts
             OmniverseTx storage hisTx = rc.txList[_data.nonce];
-            bytes32 hisTxHash = getTransactionHash(hisTx.txData);
+            bytes32 hisTxHash = _getTransactionHash(hisTx.txData);
             if (hisTxHash != txHash) {
                 // to be continued, add to evil list, but can not be duplicated
                 // EvilTxData storage evilTx = evilTxList.
                 return VerifyResult.Malicious;
             }
             else {
-                return VerifyResult.Duplicated;
+                revert("Transaction duplicated");
             }
         }
         else {
-            return VerifyResult.NonceError;
+            revert("Nonce error");
         }
         return VerifyResult.Success;
     }
 
     /**
+     * @dev See IOmniverseProtocl
+     */
+    function getTransactionCount(bytes memory _pk) external returns (uint256) {
+        return transactionRecorder[_publicKey].txList.length;
+    }
+
+    /**
      * @dev Get the hash of a tx
      */
-    function getTransactionHash(OmniverseTokenProtocol calldata _data) internal returns (bytes32) {
+    function _getTransactionHash(OmniverseTokenProtocol calldata _data) internal returns (bytes32) {
         bytes memory rawData = abi.encodePacked(uint128(_data.nonce), _data.chainId, _data.from, _data.to, _data.data);
         return keccak256(rawData);
     }
@@ -75,7 +86,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev Recover the address
      */
-    function recoverAddress(bytes32 _hash, bytes memory _signature) internal returns (address) {
+    function _recoverAddress(bytes32 _hash, bytes memory _signature) internal returns (address) {
         uint8 v;
         bytes32 r;
         bytes32 s;
@@ -90,16 +101,17 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev Check if the public key matches the recovered address
      */
-    function isPkMatched(bytes _publicKey, address _address) internal returns (bool) {
+    function _checkPkMatched(bytes _publicKey, address _address) internal {
         bytes32 hash = keccak256(_publicKey);
         address pkAddress = address(uint160(bytes20(hash)));
-        return (_address == pkAddress);
+        require(_address == pkAddress, "Signature verifying failed");
     }
 
     /**
-     * @dev Returns the count of transactions
+     * @dev See IOmniverseProtocl
      */
-    function getTransactionCount(bytes _publicKey) public returns (uint256) {
-        return transactionRecorder[_publicKey].txList.length;
+    function isMalicious(bytes memory _pk) external returns (bool) {
+        RecordedCertificate storage rc = transactionRecorder[_pk];
+        return (rc.evilTxList.length > 0);
     }
 }
