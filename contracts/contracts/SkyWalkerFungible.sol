@@ -9,6 +9,7 @@ contract SkyWalkerFungible is ERC20, Ownable {
     struct DelayedTx {
         bytes pk;
         uint256 nonce;
+        uint256 timestamp;
     }
 
     IOmniverseProtocol public omniverseProtocol;
@@ -19,16 +20,73 @@ contract SkyWalkerFungible is ERC20, Ownable {
     DelayedTx[] delayedTxs;
 
     event OmniverseTokenTransfer(bytes indexed from, bytes indexed to, uint256 value);
-    event OmniverseTokenApproved(bytes indexed owner, bytes indexed spender, uint256 value);
+    event OmniverseTokenApproval(bytes indexed owner, bytes indexed spender, uint256 value);
+    event OmniverseTokenTransferFrom(bytes indexed from, bytes indexed to, uint256 value);
 
     constructor(string memory _tokenId, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
         tokenIdentity = _tokenId;
     }
 
     /**
-     * @dev Transfer omniverse tokens to a user
+     * @dev Set the address of the omniverse protocol
      */
-    function omniverseTransfer(OmniverseTokenProtocol calldata _data) public {
+    function setOmniverseProtocolAddress(address _address) public onlyOwner {
+        omniverseProtocol = IOmniverseProtocol(_address);
+    }
+
+    /**
+     * @dev See {IOmniverseFungible-omniverseTransfer}
+     * Transfer omniverse tokens to a user
+     */
+    function omniverseTransfer(OmniverseTokenProtocol calldata _data) external override {
+        _omniverseTransaction(_data);
+    }
+
+    /**
+     * @dev See {IOmniverseFungible-omniverseApprove}
+     * Approve omniverse tokens for a user
+     */
+    function omniverseApprove(OmniverseTokenProtocol calldata _data) external override {
+        _omniverseTransaction(_data);
+    }
+
+    /**
+     * @dev See {IOmniverseFungible-omniverseTransferFrom}
+     * Transfer omniverse tokens from a user to another user
+     */
+    function omniverseTransferFrom(OmniverseTokenProtocol calldata _data) external override {
+        _omniverseTransaction(_data);
+    }
+
+    /**
+     * @dev Trigger the execution of the first delayed transaction
+     */
+    function triggerExecution() external {
+        DelayedTx storage delayedTx = delayedTxs[0];
+        
+    }
+
+    /**
+     * @dev Returns the nearest exexutable delayed transaction info
+     * or returns default if not found
+     */
+    function getExecutableDelayedTx() external returns (DelayedTx memory ret) {
+        if (delayedTxs.length > 0) {
+            if (block.timestamp >= delayedTxs[0].timestamp + omniverseProtocol.cdTime) {
+                ret = delayedTxs[0];
+            }
+        }
+    }
+
+    /**
+     * @dev See {IOmniverseFungible-omniverseBalanceOf}
+     * Returns the omniverse balance of a user
+     */
+    function omniverseBalanceOf(bytes calldata _pk) external override returns (uint256) {
+        return omniverseBalances[_pk];
+    }
+
+    function _omniverseTransaction(OmniverseTokenProtocol memory _data) internal {
         // Check if the tx destination is correct
         require(_data.to == tokenIdentity, "Wrong destination");
 
@@ -45,18 +103,6 @@ contract SkyWalkerFungible is ERC20, Ownable {
         else if (verifyRet == VerifyResult.Malicious) {
             // Slash
         }
-    }
-
-    /**
-     * @dev Approve omniverse tokens for a user
-     */
-    function omniverseApprove(OmniverseTokenProtocol calldata _data) public {
-    }
-
-    /**
-     * @dev Transfer omniverse tokens from a user to another user
-     */
-    function omniverseTransferFrom(OmniverseTokenProtocol calldata _data) public {
     }
 
     function _omniverseTransfer(bytes memory _from, bytes memory _to, uint256 _amount) internal {
@@ -83,34 +129,20 @@ contract SkyWalkerFungible is ERC20, Ownable {
             unchecked {
                 omniverseBalances[_owner] = ownerBalance - _amount;
             }
-            _mint(_spender, _amount);
+            _mint(_owner, _amount);
+            _approve(_owner, _spender, _amount);
 
-            emit OmniverseTokenApproved(_owner, _spender, _amount);
+            emit OmniverseTokenApproval(_owner, _spender, _amount);
         }
     }
 
-    function _omniverseTransferFrom(bytes storage _data) internal {
-        // _burn()
-    }
+    function _omniverseTransferFrom(address _from, address _to, uint256 _amount) internal {
+        _spendAllowance(_from, _to, _amount);
+        _burn(_from, _amount);
+        unchecked {
+            omniverseBalances[_to] += _amount;
+        }
 
-    /**
-     * @dev Returns the omniverse balance of a user
-     */
-    function omniverseBalanceOf(bytes calldata _pk) public returns (uint256) {
-        return omniverseBalances[_pk];
-    }
-
-    /**
-     * @dev Set the address of the omniverse protocol
-     */
-    function setOmniverseProtocolAddress(address _address) public onlyOwner {
-        omniverseProtocol = IOmniverseProtocol(_address);
-    }
-
-    /**
-     * Returns the omniverse token balance of a user
-     */
-    function omniverseBalanceOf(bytes calldata _pk) public returns (uint256) {
-
+        emit OmniverseTokenTransferFrom(_from, _to, _amount);
     }
 }

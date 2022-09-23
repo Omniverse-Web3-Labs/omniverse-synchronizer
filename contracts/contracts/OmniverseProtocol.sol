@@ -76,6 +76,13 @@ contract OmniverseProtocol is IOmniverseProtocol {
     }
 
     /**
+     * @dev Returns the transaction data of the user with a specified nonce
+     */
+    function getTransactionData(address _user, uint256 _nonce) external returns (OmniverseTokenProtocol memory txData, uint256 timestamp) {
+        
+    }
+
+    /**
      * @dev Get the hash of a tx
      */
     function _getTransactionHash(OmniverseTokenProtocol calldata _data) internal returns (bytes32) {
