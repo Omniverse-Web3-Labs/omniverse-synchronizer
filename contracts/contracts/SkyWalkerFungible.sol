@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./interfaces/IOmniverseProtocol.sol";
 import "./interfaces/IOmniverseFungible.sol";
 
-contract SkyWalkerFungible is ERC20, Ownable {
+contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
     struct DelayedTx {
-        address sender;
+        bytes sender;
         uint256 nonce;
     }
 
@@ -64,23 +64,22 @@ contract SkyWalkerFungible is ERC20, Ownable {
     function triggerExecution() external {
         require(delayedTxs.length > 0, "No delayed tx");
 
-        DelayedTx storage delayedTx = delayedTxs[0];
-        (OmniverseTokenProtocol memory txData, uint256 timestamp) = omniverseProtocol.getTransactionData(delayedTx[0].sender, delayedTx[0].nonce);
-        require(block.timestamp >= timestamp + omniverseProtocol.cdTime, "Not executable");
+        (OmniverseTokenProtocol memory txData, uint256 timestamp) = omniverseProtocol.getTransactionData(delayedTxs[0].sender, delayedTxs[0].nonce);
+        require(block.timestamp >= timestamp + omniverseProtocol.getCoolingDownTime(), "Not executable");
         delayedTxs[0] = delayedTxs[delayedTxs.length - 1];
         delayedTxs.pop();
 
         (uint8 op, bytes memory wrappedData) = abi.decode(txData.data, (uint8, bytes));
         if (op == APPROVE) {
-            (address owner, address spender, uint256 amount) = abi.decode(wrappedData, (address, address, uint256));
+            (bytes memory owner, bytes memory spender, uint256 amount) = abi.decode(wrappedData, (bytes, bytes, uint256));
             _omniverseApprove(owner, spender, amount);
         }
         else if (op == TRANSFER) {
-            (address from, address to, uint256 amount) = abi.decode(wrappedData, (address, address, uint256));
+            (bytes memory from, bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, bytes, uint256));
             _omniverseTransfer(from, to, amount);
         }
         else if (op == TRANSFER_FROM) {
-            (address from, address to, uint256 amount) = abi.decode(wrappedData, (address, address, uint256));
+            (bytes memory from, bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, bytes, uint256));
             _omniverseTransferFrom(from, to, amount);
         }
     }
@@ -89,10 +88,10 @@ contract SkyWalkerFungible is ERC20, Ownable {
      * @dev Returns the nearest exexutable delayed transaction info
      * or returns default if not found
      */
-    function getExecutableDelayedTx() external returns (DelayedTx memory ret) {
+    function getExecutableDelayedTx() external view returns (DelayedTx memory ret) {
         if (delayedTxs.length > 0) {
-            (OmniverseTokenProtocol memory txData, uint256 timestamp) = omniverseProtocol.getTransactionData(delayedTx[0].sender, delayedTx[0].nonce);
-            if (block.timestamp >= timestamp + omniverseProtocol.cdTime) {
+            (, uint256 timestamp) = omniverseProtocol.getTransactionData(delayedTxs[0].sender, delayedTxs[0].nonce);
+            if (block.timestamp >= timestamp + omniverseProtocol.getCoolingDownTime()) {
                 ret = delayedTxs[0];
             }
         }
@@ -102,17 +101,17 @@ contract SkyWalkerFungible is ERC20, Ownable {
      * @dev See {IOmniverseFungible-omniverseBalanceOf}
      * Returns the omniverse balance of a user
      */
-    function omniverseBalanceOf(bytes calldata _pk) external override returns (uint256) {
+    function omniverseBalanceOf(bytes calldata _pk) external view override returns (uint256) {
         return omniverseBalances[_pk];
     }
 
     function _omniverseTransaction(OmniverseTokenProtocol memory _data) internal {
         // Check if the tx destination is correct
-        require(_data.to == tokenIdentity, "Wrong destination");
+        require(keccak256(abi.encode(_data.to)) == keccak256(abi.encode(tokenIdentity)), "Wrong destination");
 
         // Check if the sender is honest
         // to be continued, we can use block list instead of `isMalicious`
-        require(!omniverseProtocol.isMalicious(), "User is malicious");
+        require(!omniverseProtocol.isMalicious(_data.from), "User is malicious");
 
         // Verify the signature
         VerifyResult verifyRet = omniverseProtocol.verifyTransaction(_data);
@@ -136,11 +135,11 @@ contract SkyWalkerFungible is ERC20, Ownable {
             }
             omniverseBalances[_to] += _amount;
 
-            emit OmniverseTokenTransfer(_from, _to, amount);
+            emit OmniverseTokenTransfer(_from, _to, _amount);
         }
     }
 
-    function _omniverseApprove(address _owner, address _spender, uint256 _amount) internal {
+    function _omniverseApprove(bytes memory _owner, bytes memory _spender, uint256 _amount) internal {
         uint256 ownerBalance = omniverseBalances[_owner];
         if (ownerBalance < _amount) {
             // fail
@@ -149,20 +148,30 @@ contract SkyWalkerFungible is ERC20, Ownable {
             unchecked {
                 omniverseBalances[_owner] = ownerBalance - _amount;
             }
-            _mint(_owner, _amount);
-            _approve(_owner, _spender, _amount);
+            
+            address ownerAddr = pkToAddress(_owner);
+            address spenderAddr = pkToAddress(_spender);
+            _mint(ownerAddr, _amount);
+            _approve(ownerAddr, spenderAddr, _amount);
 
             emit OmniverseTokenApproval(_owner, _spender, _amount);
         }
     }
 
-    function _omniverseTransferFrom(address _from, address _to, uint256 _amount) internal {
-        _spendAllowance(_from, _to, _amount);
-        _burn(_from, _amount);
+    function _omniverseTransferFrom(bytes memory _from, bytes memory _to, uint256 _amount) internal {
+        address fromAddr = pkToAddress(_from);
+        address toAddr = pkToAddress(_to);
+        _spendAllowance(fromAddr, toAddr, _amount);
+        _burn(fromAddr, _amount);
         unchecked {
             omniverseBalances[_to] += _amount;
         }
 
         emit OmniverseTokenTransferFrom(_from, _to, _amount);
+    }
+
+    function pkToAddress(bytes memory _pk) internal pure returns (address) {
+        bytes32 hash = keccak256(_pk);
+        return address(uint160(bytes20(hash)));
     }
 }

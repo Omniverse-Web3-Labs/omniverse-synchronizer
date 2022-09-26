@@ -26,5 +26,5 @@ interface IOmniverseFungible {
     /**
      * @dev Returns the omniverse balance of a user
      */
-    function omniverseBalanceOf(bytes calldata _pk) public returns (uint256) external;
+    function omniverseBalanceOf(bytes calldata _pk) external view returns (uint256);
 }

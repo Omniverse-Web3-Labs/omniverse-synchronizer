@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
-import "./interfaces/IOmniverseProtocol";
+import "./interfaces/IOmniverseProtocol.sol";
 
 contract OmniverseProtocol is IOmniverseProtocol {
     struct OmniverseTx {
@@ -30,10 +30,10 @@ contract OmniverseProtocol is IOmniverseProtocol {
      */
     function verifyTransaction(OmniverseTokenProtocol calldata _data) external override returns (VerifyResult) {
         RecordedCertificate storage rc = transactionRecorder[_data.from];
-        uint256 nonce = getTransactionCount(_data.from) + 1;
+        uint256 nonce = transactionRecorder[_data.from].txList.length;
         
         bytes32 txHash = _getTransactionHash(_data);
-        address recoveredAddress = _recoverAddress(txHash, data.signature);
+        address recoveredAddress = _recoverAddress(txHash, _data.signature);
         // Signature verified failed
         _checkPkMatched(_data.from, recoveredAddress);
 
@@ -71,21 +71,32 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev See IOmniverseProtocl
      */
-    function getTransactionCount(bytes memory _pk) external returns (uint256) {
-        return transactionRecorder[_publicKey].txList.length;
+    function getTransactionCount(bytes memory _pk) external view returns (uint256) {
+        return transactionRecorder[_pk].txList.length;
     }
 
     /**
      * @dev Returns the transaction data of the user with a specified nonce
      */
-    function getTransactionData(address _user, uint256 _nonce) external returns (OmniverseTokenProtocol memory txData, uint256 timestamp) {
+    function getTransactionData(bytes calldata _user, uint256 _nonce) external view override returns (OmniverseTokenProtocol memory txData, uint256 timestamp) {
         
+    }
+
+    /**
+     *
+     */
+    function getCoolingDownTime() external view returns (uint256) {
+        return cdTime;
+    }
+
+    function setCooingDownTime(uint256 _time) external {
+        cdTime = _time;
     }
 
     /**
      * @dev Get the hash of a tx
      */
-    function _getTransactionHash(OmniverseTokenProtocol calldata _data) internal returns (bytes32) {
+    function _getTransactionHash(OmniverseTokenProtocol memory _data) internal pure returns (bytes32) {
         bytes memory rawData = abi.encodePacked(uint128(_data.nonce), _data.chainId, _data.from, _data.to, _data.data);
         return keccak256(rawData);
     }
@@ -93,7 +104,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev Recover the address
      */
-    function _recoverAddress(bytes32 _hash, bytes memory _signature) internal returns (address) {
+    function _recoverAddress(bytes32 _hash, bytes memory _signature) internal pure returns (address) {
         uint8 v;
         bytes32 r;
         bytes32 s;
@@ -108,8 +119,8 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev Check if the public key matches the recovered address
      */
-    function _checkPkMatched(bytes _publicKey, address _address) internal {
-        bytes32 hash = keccak256(_publicKey);
+    function _checkPkMatched(bytes memory _pk, address _address) internal pure {
+        bytes32 hash = keccak256(_pk);
         address pkAddress = address(uint160(bytes20(hash)));
         require(_address == pkAddress, "Signature verifying failed");
     }
@@ -117,7 +128,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev See IOmniverseProtocl
      */
-    function isMalicious(bytes memory _pk) external returns (bool) {
+    function isMalicious(bytes memory _pk) external view returns (bool) {
         RecordedCertificate storage rc = transactionRecorder[_pk];
         return (rc.evilTxList.length > 0);
     }

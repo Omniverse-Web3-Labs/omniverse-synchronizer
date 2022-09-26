@@ -3,7 +3,7 @@ pragma solidity >=0.8.0 <0.9.0;
 
 enum VerifyResult {
     Success,
-    Malicious,
+    Malicious
 }
 
 struct OmniverseTokenProtocol {
@@ -24,10 +24,20 @@ interface IOmniverseProtocol {
     /**
      * @dev Returns the count of transactions
      */
-    function getTransactionCount(bytes memory _pk) external returns (uint256);
+    function getTransactionCount(bytes memory _pk) external view returns (uint256);
     
     /**
      * @dev Index the user is malicious or not
      */
-    function isMalicious(bytes memory _pk) external returns (bool);
+    function isMalicious(bytes memory _pk) external view returns (bool);
+
+    /**
+     * @dev Returns the transaction data of the user with a specified nonce
+     */
+    function getTransactionData(bytes calldata _user, uint256 _nonce) external view returns (OmniverseTokenProtocol memory txData, uint256 timestamp);
+
+    /**
+     * @dev Returns the cooling down time
+     */
+    function getCoolingDownTime() external view returns (uint256);
 }
