@@ -3,13 +3,13 @@ pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "./interfaces/IOmniverseProtocol";
+import "./interfaces/IOmniverseProtocol.sol";
+import "./interfaces/IOmniverseFungible.sol";
 
 contract SkyWalkerFungible is ERC20, Ownable {
     struct DelayedTx {
-        bytes pk;
+        address sender;
         uint256 nonce;
-        uint256 timestamp;
     }
 
     IOmniverseProtocol public omniverseProtocol;
@@ -62,8 +62,27 @@ contract SkyWalkerFungible is ERC20, Ownable {
      * @dev Trigger the execution of the first delayed transaction
      */
     function triggerExecution() external {
+        require(delayedTxs.length > 0, "No delayed tx");
+
         DelayedTx storage delayedTx = delayedTxs[0];
-        
+        (OmniverseTokenProtocol memory txData, uint256 timestamp) = omniverseProtocol.getTransactionData(delayedTx[0].sender, delayedTx[0].nonce);
+        require(block.timestamp >= timestamp + omniverseProtocol.cdTime, "Not executable");
+        delayedTxs[0] = delayedTxs[delayedTxs.length - 1];
+        delayedTxs.pop();
+
+        (uint8 op, bytes memory wrappedData) = abi.decode(txData.data, (uint8, bytes));
+        if (op == APPROVE) {
+            (address owner, address spender, uint256 amount) = abi.decode(wrappedData, (address, address, uint256));
+            _omniverseApprove(owner, spender, amount);
+        }
+        else if (op == TRANSFER) {
+            (address from, address to, uint256 amount) = abi.decode(wrappedData, (address, address, uint256));
+            _omniverseTransfer(from, to, amount);
+        }
+        else if (op == TRANSFER_FROM) {
+            (address from, address to, uint256 amount) = abi.decode(wrappedData, (address, address, uint256));
+            _omniverseTransferFrom(from, to, amount);
+        }
     }
 
     /**
@@ -72,7 +91,8 @@ contract SkyWalkerFungible is ERC20, Ownable {
      */
     function getExecutableDelayedTx() external returns (DelayedTx memory ret) {
         if (delayedTxs.length > 0) {
-            if (block.timestamp >= delayedTxs[0].timestamp + omniverseProtocol.cdTime) {
+            (OmniverseTokenProtocol memory txData, uint256 timestamp) = omniverseProtocol.getTransactionData(delayedTx[0].sender, delayedTx[0].nonce);
+            if (block.timestamp >= timestamp + omniverseProtocol.cdTime) {
                 ret = delayedTxs[0];
             }
         }
