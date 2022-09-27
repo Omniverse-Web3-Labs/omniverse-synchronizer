@@ -55,7 +55,10 @@ contract OmniverseProtocol is IOmniverseProtocol {
             bytes32 hisTxHash = _getTransactionHash(hisTx.txData);
             if (hisTxHash != txHash) {
                 // to be continued, add to evil list, but can not be duplicated
-                // EvilTxData storage evilTx = evilTxList.
+                EvilTxData storage evilTx = rc.evilTxList.push();
+                evilTx.hisNonce = nonce;
+                evilTx.txData.txData = _data;
+                evilTx.txData.timestamp = block.timestamp;
                 return VerifyResult.Malicious;
             }
             else {
@@ -121,7 +124,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
      */
     function _checkPkMatched(bytes memory _pk, address _address) internal pure {
         bytes32 hash = keccak256(_pk);
-        address pkAddress = address(uint160(bytes20(hash)));
+        address pkAddress = address(uint160(uint256(hash)));
         require(_address == pkAddress, "Signature verifying failed");
     }
 

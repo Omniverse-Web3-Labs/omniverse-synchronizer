@@ -172,6 +172,6 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
     function pkToAddress(bytes memory _pk) internal pure returns (address) {
         bytes32 hash = keccak256(_pk);
-        return address(uint160(bytes20(hash)));
+        return address(uint160(uint256(hash)));
     }
 }
