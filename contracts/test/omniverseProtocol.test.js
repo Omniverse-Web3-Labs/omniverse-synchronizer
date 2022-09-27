@@ -94,6 +94,13 @@ contract('OmniverseProtocol', function(accounts) {
                 txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
                 await protocol.verifyTransaction(txData);
             });
+
+            describe('Transaction count', function() {
+                it('should be one', async () => {
+                    let count = await protocol.getTransactionCount(ownerPk);
+                    assert(count == 1, "The count should be `");
+                });
+            });
         });
 
         describe('Cooling down', function() {
