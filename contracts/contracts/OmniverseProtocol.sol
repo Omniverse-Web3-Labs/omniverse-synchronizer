@@ -82,7 +82,10 @@ contract OmniverseProtocol is IOmniverseProtocol {
      * @dev Returns the transaction data of the user with a specified nonce
      */
     function getTransactionData(bytes calldata _user, uint256 _nonce) external view override returns (OmniverseTokenProtocol memory txData, uint256 timestamp) {
-        
+        RecordedCertificate storage rc = transactionRecorder[_user];
+        OmniverseTx storage omniTx = rc.txList[_nonce];
+        txData = omniTx.txData;
+        timestamp = omniTx.timestamp;
     }
 
     /**

@@ -97,6 +97,10 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
         }
     }
 
+    function getDelayedTxCount() external view returns (uint256) {
+        return delayedTxs.length;
+    }
+
     /**
      * @dev See {IOmniverseFungible-omniverseBalanceOf}
      * Returns the omniverse balance of a user
@@ -173,5 +177,9 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
     function pkToAddress(bytes memory _pk) internal pure returns (address) {
         bytes32 hash = keccak256(_pk);
         return address(uint160(uint256(hash)));
+    }
+
+    function getTime() external view returns (uint256) {
+        return block.timestamp;
     }
 }
