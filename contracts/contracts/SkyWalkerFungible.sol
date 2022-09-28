@@ -22,6 +22,9 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
     event OmniverseTokenTransfer(bytes indexed from, bytes indexed to, uint256 value);
     event OmniverseTokenApproval(bytes indexed owner, bytes indexed spender, uint256 value);
     event OmniverseTokenTransferFrom(bytes indexed from, bytes indexed to, uint256 value);
+    event OmniverseTokenExceedBalance(bytes indexed owner, uint256 balance, uint256 value);
+    event OmniverseTokenWrongOp(bytes indexed sender, uint8 op);
+    event OmniverseNotOwner(bytes indexed sender);
 
     constructor(string memory _tokenId, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
         tokenIdentity = _tokenId;
@@ -58,6 +61,10 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
         _omniverseTransaction(_data);
     }
 
+    function omniverseMint(OmniverseTokenProtocol calldata _data) external {
+        _omniverseTransaction(_data);
+    }
+
     /**
      * @dev Trigger the execution of the first delayed transaction
      */
@@ -75,12 +82,23 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
             _omniverseApprove(owner, spender, amount);
         }
         else if (op == TRANSFER) {
-            (bytes memory from, bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, bytes, uint256));
-            _omniverseTransfer(from, to, amount);
+            (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
+            _omniverseTransfer(txData.from, to, amount);
         }
         else if (op == TRANSFER_FROM) {
             (bytes memory from, bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, bytes, uint256));
             _omniverseTransferFrom(from, to, amount);
+        }
+        else if (op == MINT) {
+            address fromAddr = pkToAddress(txData.from);
+            if (fromAddr != owner()) {
+                emit OmniverseNotOwner(txData.from);
+            }
+            (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
+            _omniverseMint(to, amount);
+        }
+        else {
+            emit OmniverseTokenWrongOp(txData.from, op);
         }
     }
 
@@ -131,7 +149,7 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
     function _omniverseTransfer(bytes memory _from, bytes memory _to, uint256 _amount) internal {
         uint256 fromBalance = omniverseBalances[_from];
         if (fromBalance < _amount) {
-            // fail
+            emit OmniverseTokenExceedBalance(_from, fromBalance, _amount);
         }
         else {
             unchecked {
@@ -172,6 +190,11 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
         }
 
         emit OmniverseTokenTransferFrom(_from, _to, _amount);
+    }
+
+    function _omniverseMint(bytes memory _to, uint256 _amount) internal {
+        omniverseBalances[_to] += _amount;
+        emit OmniverseTokenTransferFrom("", _to, _amount);
     }
 
     function pkToAddress(bytes memory _pk) internal pure returns (address) {
