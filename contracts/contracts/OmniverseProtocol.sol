@@ -119,7 +119,9 @@ contract OmniverseProtocol is IOmniverseProtocol {
             s := mload(add(_signature, 64))
             v := mload(add(_signature, 65))
         }
-        return ecrecover(_hash, v, r, s);
+        address recovered = ecrecover(_hash, v, r, s);
+        require(recovered != address(0), "Signature verifying failed");
+        return recovered;
     }
 
     /**
@@ -128,7 +130,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
     function _checkPkMatched(bytes memory _pk, address _address) internal pure {
         bytes32 hash = keccak256(_pk);
         address pkAddress = address(uint160(uint256(hash)));
-        require(_address == pkAddress, "Signature verifying failed");
+        require(_address == pkAddress, "Sender not signer");
     }
 
     /**
