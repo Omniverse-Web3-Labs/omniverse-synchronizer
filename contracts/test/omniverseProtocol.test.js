@@ -10,7 +10,7 @@ const ONE_TOKEN = '1000000000000000000';
 const TEN_TOKEN = '10000000000000000000';
 const HUNDRED_TOKEN = '100000000000000000000';
 const TOKEN_ID = 'skywalker';
-const COOL_DOWN = 1;
+const COOL_DOWN = 2;
 
 const TRANSFER_FROM = 0;
 const TRANSFER = 1;
@@ -34,6 +34,17 @@ const ownerSk = Buffer.from('0cc0c2de7e8c30525b4ca3b9e0b9703fb29569060d403261055
 const user1Sk = Buffer.from('b97de1848f97378ee439b37e776ffe11a2fff415b2f93dc240b2d16e9c184ba9', 'hex');
 const user2Sk = Buffer.from('42f3b9b31fcaaa03ca71cab7d194979d0d1bedf16f8f4e9414f0ed4df699dd10', 'hex');
 
+let signData = (hash, sk) => {
+    let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(sk));
+    return '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
+}
+
+let getRawData = (txData) => {
+    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
+        Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
+    return bData;
+}
+
 let encodeMint = (from, toPk, amount, nonce) => {
     let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [toPk, amount]);
     let txData = {
@@ -43,11 +54,9 @@ let encodeMint = (from, toPk, amount, nonce) => {
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [MINT, transferData]),
     }
-    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-        Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
+    let bData = getRawData(txData);
     let hash = keccak256(bData);
-    let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(from.sk));
-    txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
+    txData.signature = signData(hash, from.sk);
     return txData;
 }
 
@@ -60,11 +69,9 @@ let encodeTransfer = (from, toPk, amount, nonce) => {
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER, transferData]),
     }
-    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-        Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
+    let bData = getRawData(txData);
     let hash = keccak256(bData);
-    let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(from.sk));
-    txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
+    txData.signature = signData(hash, from.sk);
     return txData;
 }
 
@@ -77,11 +84,9 @@ let encodeApprove = (from, toPk, amount, nonce) => {
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [APPROVE, transferData]),
     }
-    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-        Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
+    let bData = getRawData(txData);
     let hash = keccak256(bData);
-    let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(from.sk));
-    txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
+    txData.signature = signData(hash, from.sk);
     return txData;
 }
 
@@ -94,11 +99,9 @@ let encodeTransferFrom = (spender, fromPk, toPk, amount, nonce) => {
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER_FROM, transferData]),
     }
-    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-        Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
+    let bData = getRawData(txData);
     let hash = keccak256(bData);
-    let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(spender.sk));
-    txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
+    txData.signature = signData(hash, spender.sk);
     return txData;
 }
 
@@ -138,7 +141,7 @@ contract('OmniverseProtocol', function() {
 
         describe('Nonce error', function() {
             it('should fail', async () => {
-                let nonce = '10';
+                let nonce = await protocol.getTransactionCount(user1Pk) + 20;
                 let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
                 await utils.expectThrow(protocol.verifyTransaction(txData), 'Nonce error');
             });
@@ -164,7 +167,7 @@ contract('OmniverseProtocol', function() {
 
         describe('Transaction duplicated', function() {
             it('should fail', async () => {
-                let nonce = '0';
+                let nonce = await protocol.getTransactionCount(user1Pk) - 1;
                 let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
                 await utils.expectThrow(protocol.verifyTransaction(txData), 'Transaction duplicated');
             });
@@ -172,7 +175,7 @@ contract('OmniverseProtocol', function() {
 
         describe('Malicious', function() {
             it('should fail', async () => {
-                let nonce = '0';
+                let nonce = await protocol.getTransactionCount(user1Pk) - 1;
                 let txData = encodeMint({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
                 await protocol.verifyTransaction(txData);
                 let malicious = await protocol.isMalicious(user1Pk);
@@ -194,11 +197,7 @@ contract('OmniverseProtocol', function() {
     });
 });
     
-contract('SkywalkerFungible', function(accounts) {
-    const owner = accounts[0];
-    const user1 = accounts[1];
-    const user2 = accounts[2];
-
+contract('SkywalkerFungible', function() {
     before(async function() {
         await initContract();
     });
@@ -222,359 +221,295 @@ contract('SkywalkerFungible', function(accounts) {
         let ret = await locker.triggerExecution();
     }
     
-    // describe('Omniverse Transaction', function() {
-    //     before(async function() {
-    //         await initContract();
-    //     });
+    describe('Omniverse Transaction', function() {
+        before(async function() {
+            await initContract();
+        });
     
-    //     describe('Wrong destination', function() {
-    //         it('should fail', async () => {
-    //             let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-    //             let txData = {
-    //                 nonce: 0,
-    //                 chainId: 'ETHEREUM',
-    //                 from: ownerPk,
-    //                 to: 'skywalker1',
-    //                 data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-    //             }
-    //             let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-    //                 Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-    //             let hash = keccak256(bData);
-    //             let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-    //             txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-    //             await utils.expectThrow(locker.omniverseTransfer(txData), 'Wrong destination');
-    //         });
-    //     });
+        describe('Wrong destination', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                txData.to = 'LandRover';
+                let bData = getRawData(txData);
+                let hash = keccak256(bData);
+                txData.signature = signData(hash, user1Sk);
+                await utils.expectThrow(locker.omniverseTransfer(txData), 'Wrong destination');
+            });
+        });
     
-    //     describe('All conditions satisfied', function() {
-    //         it('should succeed', async () => {
-    //             let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-    //             let txData = {
-    //                 nonce: 0,
-    //                 chainId: 'ETHEREUM',
-    //                 from: ownerPk,
-    //                 to: 'skywalker',
-    //                 data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-    //             }
-    //             let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-    //                 Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-    //             let hash = keccak256(bData);
-    //             let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-    //             txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-    //             await locker.omniverseTransfer(txData);
-    //             let count = await locker.getDelayedTxCount();
-    //             assert(count == 1, 'The number of delayed txs should be one');
-    //         });
-    //     });
+        describe('All conditions satisfied', function() {
+            it('should succeed', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                let count = await locker.getDelayedTxCount();
+                assert(count == 1, 'The number of delayed txs should be one');
+            });
+        });
     
-    //     describe('Malicious transaction', function() {
-    //         it('should fail', async () => {
-    //             let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-    //             let txData = {
-    //                 nonce: 0,
-    //                 chainId: 'ETHEREUM',
-    //                 from: ownerPk,
-    //                 to: 'skywalker',
-    //                 data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [1, transferData]),
-    //             }
-    //             let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-    //                 Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-    //             let hash = keccak256(bData);
-    //             let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-    //             txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-    //             await locker.omniverseTransfer(txData), 'Wrong destination';
-    //             let count = await locker.getDelayedTxCount();
-    //             assert(count == 1, 'The number of delayed txs should be one');
-    //         });
-    //     });
+        describe('Malicious transaction', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk) - 1;
+                let txData = encodeMint({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                let count = await locker.getDelayedTxCount();
+                assert(count == 1, 'The number of delayed txs should be one');
+            });
+        });
     
-    //     describe('User is malicious', function() {
-    //         it('should fail', async () => {
-    //             let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-    //             let txData = {
-    //                 nonce: 0,
-    //                 chainId: 'ETHEREUM',
-    //                 from: ownerPk,
-    //                 to: 'skywalker',
-    //                 data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-    //             }
-    //             let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-    //                 Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-    //             let hash = keccak256(bData);
-    //             let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-    //             txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-    //             await utils.expectThrow(locker.omniverseTransfer(txData), 'User is malicious');
-    //         });
-    //     });
-    // });
+        describe('User is malicious', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await utils.expectThrow(locker.omniverseTransfer(txData), 'User is malicious');
+            });
+        });
+    });
     
-    // describe('Get executable delayed transaction', function() {
-    //     before(async function() {
-    //         await initContract();
-    //         let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-    //         let txData = {
-    //             nonce: 0,
-    //             chainId: 'ETHEREUM',
-    //             from: ownerPk,
-    //             to: 'skywalker',
-    //             data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-    //         }
-    //         let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-    //             Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-    //         let hash = keccak256(bData);
-    //         let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-    //         txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-    //         await locker.omniverseTransfer(txData);
-    //     });
+    describe('Get executable delayed transaction', function() {
+        before(async function() {
+            await initContract();
+            let nonce = await protocol.getTransactionCount(user1Pk);
+            let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+            await locker.omniverseTransfer(txData);
+        });
 
-    //     describe('Cooling down', function() {
-    //         it('should be none', async () => {
-    //             let tx = await locker.getExecutableDelayedTx();
-    //             assert(tx.sender == '0x', 'There should be no transaction');
-    //         });
-    //     });
+        describe('Cooling down', function() {
+            it('should be none', async () => {
+                let tx = await locker.getExecutableDelayedTx();
+                assert(tx.sender == '0x', 'There should be no transaction');
+            });
+        });
 
-    //     describe('Cooled down', function() {
-    //         it('should be one transaction', async () => {
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let tx = await locker.getExecutableDelayedTx();
-    //             assert(tx.sender == ownerPk, 'There should be one transaction');
-    //         });
-    //     });
-    // });
+        describe('Cooled down', function() {
+            it('should be one transaction', async () => {
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let tx = await locker.getExecutableDelayedTx();
+                assert(tx.sender == user1Pk, 'There should be one transaction');
+            });
+        });
+    });
     
-    // describe('Trigger execution', function() {
-    //     before(async function() {
-    //         await initContract();
-    //     });
+    describe('Trigger execution', function() {
+        before(async function() {
+            await initContract();
+        });
 
-    //     describe('No delayed transaction', function() {
-    //         it('should fail', async () => {
-    //             await utils.expectThrow(locker.triggerExecution(), 'No delayed tx');
-    //         });
-    //     });
+        describe('No delayed transaction', function() {
+            it('should fail', async () => {
+                await utils.expectThrow(locker.triggerExecution(), 'No delayed tx');
+            });
+        });
 
-    //     describe('Not executable', function() {
-    //         it('should fail', async () => {
-    //             let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-    //             let txData = {
-    //                 nonce: 0,
-    //                 chainId: 'ETHEREUM',
-    //                 from: ownerPk,
-    //                 to: 'skywalker',
-    //                 data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-    //             }
-    //             let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-    //                 Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-    //             let hash = keccak256(bData);
-    //             let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-    //             txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.expectThrow(locker.triggerExecution(), 'Not executable');
-    //         });
-    //     });
-    // });
+        describe('Not executable', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.expectThrow(locker.triggerExecution(), 'Not executable');
+            });
+        });
+    });
     
-    // describe('Mint', function() {
-    //     before(async function() {
-    //         await initContract();
-    //     });
+    describe('Mint', function() {
+        before(async function() {
+            await initContract();
+        });
 
-    //     describe('Not owner', function() {
-    //         it('should fail', async () => {
-                // let nonce = await protocol.getTransactionCount(from.pk);
-    //             let txData = encodeMint({pk: user2Pk, sk: user2Sk}, user1Pk, ONE_TOKEN, nonce);
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let ret = await locker.triggerExecution();
-    //             assert(ret.logs[0].event == 'OmniverseNotOwner');
-    //             let balance = await locker.omniverseBalanceOf(user1Pk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //         });
-    //     });
+        describe('Not owner', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeMint({pk: user2Pk, sk: user2Sk}, user1Pk, ONE_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseNotOwner');
+                let balance = await locker.omniverseBalanceOf(user1Pk);
+                assert('0' == balance, 'Balance should be zero');
+            });
+        });
 
-    //     describe('Is owner', function() {
-    //         it('should succeed', async () => {
-                // let nonce = await protocol.getTransactionCount(from.pk);
-    //             let txData = encodeMint({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN, nonce);
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let ret = await locker.triggerExecution();
-    //             let o = await locker.owner();
-    //             assert(ret.logs[0].event == 'OmniverseTokenTransfer');
-    //             let balance = await locker.omniverseBalanceOf(user1Pk);
-    //             assert(ONE_TOKEN == balance, 'Balance should be one');
-    //         });
-    //     });
-    // });
+        describe('Is owner', function() {
+            it('should succeed', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeMint({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                let o = await locker.owner();
+                assert(ret.logs[0].event == 'OmniverseTokenTransfer');
+                let balance = await locker.omniverseBalanceOf(user1Pk);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+            });
+        });
+    });
     
-    // describe('Transfer', function() {
-    //     before(async function() {
-    //         await initContract();
-    //         await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
-    //     });
+    describe('Transfer', function() {
+        before(async function() {
+            await initContract();
+            await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
+        });
 
-    //     describe('Exceed balance', function() {
-    //         it('should fail', async () => {
-    //             let nonce = await protocol.getTransactionCount(user1Pk);
-    //             let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let ret = await locker.triggerExecution();
-    //             assert(ret.logs[0].event == 'OmniverseTokenExceedBalance');
-    //             let balance = await locker.omniverseBalanceOf(user1Pk);
-    //             assert(ONE_TOKEN == balance, 'Balance should be one');
-    //             balance = await locker.omniverseBalanceOf(user2Pk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //         });
-    //     });
+        describe('Exceed balance', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseTokenExceedBalance');
+                let balance = await locker.omniverseBalanceOf(user1Pk);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+                balance = await locker.omniverseBalanceOf(user2Pk);
+                assert('0' == balance, 'Balance should be zero');
+            });
+        });
 
-    //     describe('Balance enough', function() {
-    //         it('should succeed', async () => {
-    //             let nonce = await protocol.getTransactionCount(user1Pk);
-    //             let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let ret = await locker.triggerExecution();
-    //             assert(ret.logs[0].event == 'OmniverseTokenTransfer');
-    //             let balance = await locker.omniverseBalanceOf(user1Pk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             balance = await locker.omniverseBalanceOf(user2Pk);
-    //             assert(ONE_TOKEN == balance, 'Balance should be one');
-    //         });
-    //     });
-    // });
+        describe('Balance enough', function() {
+            it('should succeed', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseTokenTransfer');
+                let balance = await locker.omniverseBalanceOf(user1Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.omniverseBalanceOf(user2Pk);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+            });
+        });
+    });
     
-    // describe('Approve', function() {
-    //     before(async function() {
-    //         await initContract();
-    //         await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
-    //     });
+    describe('Approve', function() {
+        before(async function() {
+            await initContract();
+            await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
+        });
 
-    //     describe('Exceed balance', function() {
-    //         it('should fail', async () => {
-    //             let nonce = await protocol.getTransactionCount(user1Pk);
-    //             let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let ret = await locker.triggerExecution();
-    //             assert(ret.logs[0].event == 'OmniverseTokenExceedBalance');
-    //             let balance = await locker.omniverseBalanceOf(user1Pk);
-    //             assert(ONE_TOKEN == balance, 'Balance should be one');
-    //             balance = await locker.omniverseBalanceOf(user2Pk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //         });
-    //     });
+        describe('Exceed balance', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseTokenExceedBalance');
+                let balance = await locker.omniverseBalanceOf(user1Pk);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+                balance = await locker.omniverseBalanceOf(user2Pk);
+                assert('0' == balance, 'Balance should be zero');
+            });
+        });
 
-    //     describe('Balance enough', function() {
-    //         it('should succeed', async () => {
-    //             let nonce = await protocol.getTransactionCount(user1Pk);
-    //             let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let ret = await locker.triggerExecution();
-    //             assert(ret.logs[0].event == 'Transfer');
-    //             assert(ret.logs[1].event == 'Approval');
-    //             assert(ret.logs[2].event == 'OmniverseTokenApproval');
-    //             let balance = await locker.omniverseBalanceOf(user1Pk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             balance = await locker.omniverseBalanceOf(user2Pk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             balance = await locker.balanceOf(user1);
-    //             assert(ONE_TOKEN == balance, 'Balance should be one');
-    //             allowance = await locker.allowance(user1, user2);
-    //             assert(ONE_TOKEN == allowance, 'Allowance should be one');
-    //         });
-    //     });
-    // });
+        describe('Balance enough', function() {
+            it('should succeed', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseTokenApproval');
+                let balance = await locker.omniverseBalanceOf(user1Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.omniverseBalanceOf(user2Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.balanceOf(user1);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+                allowance = await locker.allowance(user1, user2);
+                assert(ONE_TOKEN == allowance, 'Allowance should be one');
+            });
+        });
+    });
     
-    // describe('Transfer from', function() {
-    //     before(async function() {
-    //         await initContract();
-    //         await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
-    //         let nonce = await protocol.getTransactionCount(user1Pk);
-    //         let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
-    //         await locker.omniverseTransfer(txData);
-    //         await utils.sleep(COOL_DOWN);
-    //         await utils.evmMine(1);
-    //         let ret = await locker.triggerExecution();
-    //     });
+    describe('Transfer from', function() {
+        before(async function() {
+            await initContract();
+            await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
+            let nonce = await protocol.getTransactionCount(user1Pk);
+            let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
+            await locker.omniverseTransfer(txData);
+            await utils.sleep(COOL_DOWN);
+            await utils.evmMine(1);
+            let ret = await locker.triggerExecution();
+        });
 
-    //     describe('Insufficient allowance', function() {
-    //         it('should fail', async () => {
-    //             let nonce = await protocol.getTransactionCount(user2Pk);
-    //             let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, HUNDRED_TOKEN, nonce);
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let ret = await locker.triggerExecution();
-    //             assert(ret.logs[0].event == 'OmniverseError');
-    //             assert(ret.logs[0].args[1] == 'Insufficient allowance');
-    //             let balance = await locker.balanceOf(user1);
-    //             assert(ONE_TOKEN == balance, 'Balance should be one');
-    //             balance = await locker.balanceOf(user2);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             allowance = await locker.allowance(user1, user2);
-    //             assert(ONE_TOKEN == allowance, 'Allowance should be one');
-    //             balance = await locker.omniverseBalanceOf(user1Pk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             balance = await locker.omniverseBalanceOf(ownerPk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //         });
-    //     });
+        describe('Insufficient allowance', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user2Pk);
+                let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, HUNDRED_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseError');
+                assert(ret.logs[0].args[1] == 'Insufficient allowance');
+                let balance = await locker.balanceOf(user1);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+                balance = await locker.balanceOf(user2);
+                assert('0' == balance, 'Balance should be zero');
+                allowance = await locker.allowance(user1, user2);
+                assert(ONE_TOKEN == allowance, 'Allowance should be one');
+                balance = await locker.omniverseBalanceOf(user1Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.omniverseBalanceOf(ownerPk);
+                assert('0' == balance, 'Balance should be zero');
+            });
+        });
 
-    //     describe('Transfer amount exceeds balance', function() {
-    //         it('should fail', async () => {
-    //             let nonce = await protocol.getTransactionCount(user2Pk);
-    //             await locker.approve(user2, TEN_TOKEN, {from: user1});
-    //             let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, TEN_TOKEN, nonce);
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let ret = await locker.triggerExecution();
-    //             assert(ret.logs[0].event == 'OmniverseError');
-    //             assert(ret.logs[0].args[1] == 'Transfer amount exceeds balance');
-    //             let balance = await locker.balanceOf(user1);
-    //             assert(ONE_TOKEN == balance, 'Balance should be one');
-    //             balance = await locker.balanceOf(user2);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             allowance = await locker.allowance(user1, user2);
-    //             assert(TEN_TOKEN == allowance, 'Allowance should be ten');
-    //             balance = await locker.omniverseBalanceOf(user1Pk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             balance = await locker.omniverseBalanceOf(ownerPk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //         });
-    //     });
+        describe('Transfer amount exceeds balance', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user2Pk);
+                await locker.approve(user2, TEN_TOKEN, {from: user1});
+                let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, TEN_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseError');
+                assert(ret.logs[0].args[1] == 'Transfer amount exceeds balance');
+                let balance = await locker.balanceOf(user1);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+                balance = await locker.balanceOf(user2);
+                assert('0' == balance, 'Balance should be zero');
+                allowance = await locker.allowance(user1, user2);
+                assert(TEN_TOKEN == allowance, 'Allowance should be ten');
+                balance = await locker.omniverseBalanceOf(user1Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.omniverseBalanceOf(ownerPk);
+                assert('0' == balance, 'Balance should be zero');
+            });
+        });
 
-    //     describe('Transfer amount exceeds balance', function() {
-    //         it('should succeed', async () => {
-    //             let nonce = await protocol.getTransactionCount(user2Pk);
-    //             await locker.approve(user2, ONE_TOKEN, {from: user1});
-    //             let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, ONE_TOKEN, nonce);
-    //             await locker.omniverseTransfer(txData);
-    //             await utils.sleep(COOL_DOWN);
-    //             await utils.evmMine(1);
-    //             let ret = await locker.triggerExecution();
-    //             assert(ret.logs[0].event == 'OmniverseTokenTransferFrom');
-    //             let balance = await locker.balanceOf(user1);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             balance = await locker.balanceOf(user2);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             allowance = await locker.allowance(user1, user2);
-    //             assert('0' == allowance, 'Allowance should be zero');
-    //             balance = await locker.omniverseBalanceOf(user1Pk);
-    //             assert('0' == balance, 'Balance should be zero');
-    //             balance = await locker.omniverseBalanceOf(ownerPk);
-    //             assert(ONE_TOKEN == balance, 'Balance should be one');
-    //         });
-    //     });
-    // });
+        describe('Transfer amount exceeds balance', function() {
+            it('should succeed', async () => {
+                let nonce = await protocol.getTransactionCount(user2Pk);
+                await locker.approve(user2, ONE_TOKEN, {from: user1});
+                let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, ONE_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseTokenTransferFrom');
+                let balance = await locker.balanceOf(user1);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.balanceOf(user2);
+                assert('0' == balance, 'Balance should be zero');
+                allowance = await locker.allowance(user1, user2);
+                assert('0' == allowance, 'Allowance should be zero');
+                balance = await locker.omniverseBalanceOf(user1Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.omniverseBalanceOf(ownerPk);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+            });
+        });
+    });
 });
