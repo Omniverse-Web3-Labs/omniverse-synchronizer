@@ -189,7 +189,6 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
     function _omniverseTransferFrom(bytes memory _spender, bytes memory _from, bytes memory _to, uint256 _amount) internal {
         address spenderAddr = pkToAddress(_spender);
         address fromAddr = pkToAddress(_from);
-        address toAddr = pkToAddress(_to);
         uint256 currentAllowance = _allowances[fromAddr][spenderAddr];
         // Check
         if(currentAllowance < _amount) {

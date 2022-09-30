@@ -215,7 +215,7 @@ contract('SkywalkerFungible', function() {
     const mintToken = async function(from, toPk, amount) {
         let nonce = await protocol.getTransactionCount(from.pk);
         let txData = encodeMint(from, toPk, amount, nonce);
-        await locker.omniverseTransfer(txData);
+        await locker.omniverseMint(txData);
         await utils.sleep(COOL_DOWN);
         await utils.evmMine(1);
         let ret = await locker.triggerExecution();
@@ -252,7 +252,7 @@ contract('SkywalkerFungible', function() {
             it('should fail', async () => {
                 let nonce = await protocol.getTransactionCount(user1Pk) - 1;
                 let txData = encodeMint({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
+                await locker.omniverseMint(txData);
                 let count = await locker.getDelayedTxCount();
                 assert(count == 1, 'The number of delayed txs should be one');
             });
@@ -322,7 +322,7 @@ contract('SkywalkerFungible', function() {
             it('should fail', async () => {
                 let nonce = await protocol.getTransactionCount(user1Pk);
                 let txData = encodeMint({pk: user2Pk, sk: user2Sk}, user1Pk, ONE_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
+                await locker.omniverseMint(txData);
                 await utils.sleep(COOL_DOWN);
                 await utils.evmMine(1);
                 let ret = await locker.triggerExecution();
@@ -336,7 +336,7 @@ contract('SkywalkerFungible', function() {
             it('should succeed', async () => {
                 let nonce = await protocol.getTransactionCount(user1Pk);
                 let txData = encodeMint({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
+                await locker.omniverseMint(txData);
                 await utils.sleep(COOL_DOWN);
                 await utils.evmMine(1);
                 let ret = await locker.triggerExecution();
@@ -397,7 +397,7 @@ contract('SkywalkerFungible', function() {
             it('should fail', async () => {
                 let nonce = await protocol.getTransactionCount(user1Pk);
                 let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
+                await locker.omniverseApprove(txData);
                 await utils.sleep(COOL_DOWN);
                 await utils.evmMine(1);
                 let ret = await locker.triggerExecution();
@@ -413,7 +413,7 @@ contract('SkywalkerFungible', function() {
             it('should succeed', async () => {
                 let nonce = await protocol.getTransactionCount(user1Pk);
                 let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
+                await locker.omniverseApprove(txData);
                 await utils.sleep(COOL_DOWN);
                 await utils.evmMine(1);
                 let ret = await locker.triggerExecution();
@@ -436,7 +436,7 @@ contract('SkywalkerFungible', function() {
             await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
             let nonce = await protocol.getTransactionCount(user1Pk);
             let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
-            await locker.omniverseTransfer(txData);
+            await locker.omniverseApprove(txData);
             await utils.sleep(COOL_DOWN);
             await utils.evmMine(1);
             let ret = await locker.triggerExecution();
@@ -446,7 +446,7 @@ contract('SkywalkerFungible', function() {
             it('should fail', async () => {
                 let nonce = await protocol.getTransactionCount(user2Pk);
                 let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, HUNDRED_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
+                await locker.omniverseTransferFrom(txData);
                 await utils.sleep(COOL_DOWN);
                 await utils.evmMine(1);
                 let ret = await locker.triggerExecution();
@@ -470,7 +470,7 @@ contract('SkywalkerFungible', function() {
                 let nonce = await protocol.getTransactionCount(user2Pk);
                 await locker.approve(user2, TEN_TOKEN, {from: user1});
                 let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, TEN_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
+                await locker.omniverseTransferFrom(txData);
                 await utils.sleep(COOL_DOWN);
                 await utils.evmMine(1);
                 let ret = await locker.triggerExecution();
@@ -494,7 +494,7 @@ contract('SkywalkerFungible', function() {
                 let nonce = await protocol.getTransactionCount(user2Pk);
                 await locker.approve(user2, ONE_TOKEN, {from: user1});
                 let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, ONE_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
+                await locker.omniverseTransferFrom(txData);
                 await utils.sleep(COOL_DOWN);
                 await utils.evmMine(1);
                 let ret = await locker.triggerExecution();
