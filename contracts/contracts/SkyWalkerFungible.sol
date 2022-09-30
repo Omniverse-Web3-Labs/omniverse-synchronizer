@@ -2,7 +2,7 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./ERC20.sol";
 import "./interfaces/IOmniverseProtocol.sol";
 import "./interfaces/IOmniverseFungible.sol";
 
@@ -25,6 +25,7 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
     event OmniverseTokenExceedBalance(bytes indexed owner, uint256 balance, uint256 value);
     event OmniverseTokenWrongOp(bytes indexed sender, uint8 op);
     event OmniverseNotOwner(bytes indexed sender);
+    event OmniverseError(bytes indexed sender, string reason);
 
     constructor(string memory _tokenId, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
         tokenIdentity = _tokenId;
@@ -174,8 +175,12 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
             
             address ownerAddr = pkToAddress(_owner);
             address spenderAddr = pkToAddress(_spender);
-            _mint(ownerAddr, _amount);
-            _approve(ownerAddr, spenderAddr, _amount);
+
+            // mint
+            _totalSupply += _amount;
+            _balances[ownerAddr] += _amount;
+            // approve
+            _allowances[ownerAddr][spenderAddr] = _amount;
 
             emit OmniverseTokenApproval(_owner, _spender, _amount);
         }
@@ -185,8 +190,25 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
         address spenderAddr = pkToAddress(_spender);
         address fromAddr = pkToAddress(_from);
         address toAddr = pkToAddress(_to);
-        _spendAllowance(fromAddr, spenderAddr, _amount);
-        _burn(fromAddr, _amount);
+        uint256 currentAllowance = _allowances[fromAddr][spenderAddr];
+        // Check
+        if(currentAllowance < _amount) {
+            emit OmniverseError(_spender, "Insufficient allowance");
+            return;
+        }
+
+        uint256 fromBalance = _balances[fromAddr];
+        if(fromBalance < _amount) {
+            emit OmniverseError(_spender, "Transfer amount exceeds balance");
+        }
+
+        // Update
+        unchecked {
+            _allowances[fromAddr][spenderAddr] = currentAllowance - _amount;
+            _balances[fromAddr] = fromBalance - _amount;
+        }
+        _totalSupply -= _amount;
+
         unchecked {
             omniverseBalances[_to] += _amount;
         }

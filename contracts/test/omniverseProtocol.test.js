@@ -7,6 +7,7 @@ const assert = require('assert');
 
 const ONE_TOKEN = '1000000000000000000';
 const TEN_TOKEN = '10000000000000000000';
+const HUNDRED_TOKEN = '100000000000000000000';
 const TOKEN_ID = 'skywalker';
 const COOL_DOWN = 1;
 
@@ -25,17 +26,17 @@ const Locker = artifacts.require('./SkyWalkerFungible.sol');
 OmniverseProtocol.numberFormat = 'String';
 Locker.numberFormat = 'String';
 
-const owner = '0x8ee8f0f6c58da9b4816d03843eaff828d53d4119';
-const user1 = '0xdf447702281df2fb9f6f4eb294ebe5626ada168e';
-const user2 = '0x0d378e49aeb0462cdc42ee80c30096f4e9ec4c08';
+const owner = '0xe092b1fa25DF5786D151246E492Eed3d15EA4dAA';
+const user1 = '0xc0d8F541Ab8B71F20c10261818F2F401e8194049';
+const user2 = '0xf1F8Ef6b4D4Ba31079E2263eC85c03fD5a0802bF';
 
 const ownerPk = '0x03415b5f599e6efce1101f35e5bcda1fe626c211a2cd48db193f3550e3847c0e3687ff1ffcb0147d8984f0ae8e178c4f35cde7c67aa9873e27498891d839ef0b';
 const user1Pk = '0x77c8fd82e2703c2b60b39b2d953345bafab600c9b1d330c36e3d259e77db01975d2c4dd7978fa2f7d834fc2ba49bec67ae41952d67600a470a9f53ce37de660a';
 const user2Pk = '0xd0d16a005ebf5ac38f3d4caa6a6559747ad48351e5976eec66c3178acc60a19318448efd0a009b17b089bfdc32bf63839681957292f9575293d3760ed8181fd2';
 
-const ownerSk = Buffer.from('1e483ad13e569b90ec5aa7b12b647c6b9dbea560e7f9a2397dd35a692d3b9c0d', 'hex');
-const user1Sk = Buffer.from('e68a47d1cdd6e959e9ff754c3e6f57e2afeb23b066c61287efe94d26b584eed4', 'hex');
-const user2Sk = Buffer.from('ef74a1388ed6914e95ddccb5c7fe6dc9aa2f7f957f02c24429acd6f7582fd40f', 'hex');
+const ownerSk = Buffer.from('0cc0c2de7e8c30525b4ca3b9e0b9703fb29569060d403261055481df7014f7fa', 'hex');
+const user1Sk = Buffer.from('b97de1848f97378ee439b37e776ffe11a2fff415b2f93dc240b2d16e9c184ba9', 'hex');
+const user2Sk = Buffer.from('42f3b9b31fcaaa03ca71cab7d194979d0d1bedf16f8f4e9414f0ed4df699dd10', 'hex');
 
 let encodeMint = (from, toPk, amount, nonce) => {
     let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [toPk, amount]);
@@ -290,6 +291,10 @@ let encodeTransferFrom = (spender, fromPk, toPk, amount, nonce) => {
 // });
     
 contract('SkywalkerFungible', function(accounts) {
+    const owner = accounts[0];
+    const user1 = accounts[1];
+    const user2 = accounts[2];
+
     before(async function() {
         await initContract();
     });
@@ -591,14 +596,38 @@ contract('SkywalkerFungible', function(accounts) {
             await initContract();
             await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
             let nonce = await protocol.getTransactionCount(user1Pk);
-            let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
+            let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
             await locker.omniverseTransfer(txData);
             await utils.sleep(COOL_DOWN);
             await utils.evmMine(1);
             let ret = await locker.triggerExecution();
         });
 
-        describe('Exceed balance', function() {
+        describe('Insufficient allowance', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user2Pk);
+                let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, HUNDRED_TOKEN, nonce);
+                await locker.omniverseTransfer(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                console.log('ret.logs', ret.logs);
+                assert(ret.logs[0].event == 'OmniverseError');
+                assert(ret.logs[0].args[1] == 'Insufficient allowance');
+                let balance = await locker.balanceOf(user1);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.balanceOf(user2);
+                assert('0' == balance, 'Balance should be zero');
+                allowance = await locker.allowance(user1, user2);
+                assert('0' == allowance, 'Allowance should be zero');
+                balance = await locker.omniverseBalanceOf(user1Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.omniverseBalanceOf(ownerPk);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+            });
+        });
+
+        describe('Transfer amount exceeds balance', function() {
             it('should fail', async () => {
                 let nonce = await protocol.getTransactionCount(user2Pk);
                 let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, TEN_TOKEN, nonce);
@@ -608,7 +637,7 @@ contract('SkywalkerFungible', function(accounts) {
                 let ret = await locker.triggerExecution();
                 console.log('ret.logs', ret.logs);
                 assert(ret.logs[0].event == 'OmniverseError');
-                assert(ret.logs[0].args[1] == 'insufficient allowance');
+                assert(ret.logs[0].args[1] == 'Transfer amount exceeds balance');
                 let balance = await locker.balanceOf(user1);
                 assert('0' == balance, 'Balance should be zero');
                 balance = await locker.balanceOf(user2);
