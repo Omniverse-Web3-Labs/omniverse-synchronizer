@@ -1,4 +1,5 @@
 const utils = require('./utils');
+const BN = require('bn.js');
 const secp256k1 = require('secp256k1');
 const keccak256 = require('keccak256');
 const Web3 = require('web3');
@@ -15,11 +16,6 @@ const TRANSFER_FROM = 0;
 const TRANSFER = 1;
 const APPROVE = 2;
 const MINT = 3;
-
-const OmniverseTokenApproval = '0xdef0f31451edb45073f38f2b372985fe138ee585432d98d59ffd45b6097ab97e';
-const OmniverseTokenTransfer = '0x1d8380031597508b7d5d3df4999b8136789b62ed932115f9eb5897e19903792e';
-const OmniverseTokenTransferFrom = '0x67e3ad403202450551624c0c8b76e0de82a103bbc467062b0b3944ddb48b154e';
-const OmniverseTokenExceedBalance = '0xaa7f93bbb0659f61a11b680e0590ab23205967a5bdaa928dae6372df0bb93267';
 
 const OmniverseProtocol = artifacts.require('./OmniverseProtocol.sol');
 const Locker = artifacts.require('./SkyWalkerFungible.sol');
@@ -44,10 +40,10 @@ let encodeMint = (from, toPk, amount, nonce) => {
         nonce: nonce,
         chainId: 'ETHEREUM',
         from: from.pk,
-        to: 'skywalker',
+        to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [MINT, transferData]),
     }
-    let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
+    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
         Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
     let hash = keccak256(bData);
     let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(from.sk));
@@ -61,10 +57,10 @@ let encodeTransfer = (from, toPk, amount, nonce) => {
         nonce: nonce,
         chainId: 'ETHEREUM',
         from: from.pk,
-        to: 'skywalker',
+        to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER, transferData]),
     }
-    let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
+    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
         Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
     let hash = keccak256(bData);
     let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(from.sk));
@@ -78,10 +74,10 @@ let encodeApprove = (from, toPk, amount, nonce) => {
         nonce: nonce,
         chainId: 'ETHEREUM',
         from: from.pk,
-        to: 'skywalker',
+        to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [APPROVE, transferData]),
     }
-    let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
+    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
         Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
     let hash = keccak256(bData);
     let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(from.sk));
@@ -95,10 +91,10 @@ let encodeTransferFrom = (spender, fromPk, toPk, amount, nonce) => {
         nonce: nonce,
         chainId: 'ETHEREUM',
         from: spender.pk,
-        to: 'skywalker',
+        to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER_FROM, transferData]),
     }
-    let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
+    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
         Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
     let hash = keccak256(bData);
     let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(spender.sk));
@@ -106,189 +102,97 @@ let encodeTransferFrom = (spender, fromPk, toPk, amount, nonce) => {
     return txData;
 }
 
-// contract('OmniverseProtocol', function(accounts) {
+contract('OmniverseProtocol', function() {
+    let protocol;
+    let locker;
 
-//     let protocol;
-//     let locker;
-
-//     let initContract = async function() {
-//         protocol = await OmniverseProtocol.new();
-//         locker = await Locker.new(TOKEN_ID, TOKEN_ID, TOKEN_ID);
-//         await locker.setOmniverseProtocolAddress(protocol.address);
-//         await protocol.setCooingDownTime(COOL_DOWN);
-//     }
+    let initContract = async function() {
+        protocol = await OmniverseProtocol.new();
+        locker = await Locker.new(TOKEN_ID, TOKEN_ID, TOKEN_ID);
+        await locker.setOmniverseProtocolAddress(protocol.address);
+        await protocol.setCooingDownTime(COOL_DOWN);
+    }
     
-//     describe('Verify transaction', function() {
-//         before(async function() {
-//             await initContract();
-//         });
+    describe('Verify transaction', function() {
+        before(async function() {
+            await initContract();
+        });
 
-//         describe('Signature error', function() {
-//             it('should fail', async () => {
-//                 let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-//                 let txData = {
-//                     nonce: 0,
-//                     chainId: 'ETHEREUM',
-//                     from: ownerPk,
-//                     to: 'skywalker',
-//                     data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-//                 }
-//                 let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-//                     Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-//                 let hash = keccak256(bData);
-//                 let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-//                 txData.signature = '0x' + Buffer.from(signature.signature).toString('hex');
-//                 await utils.expectThrow(protocol.verifyTransaction(txData), 'Signature verifying failed');
-//             });
-//         });
+        describe('Signature error', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                txData.signature = txData.signature.slice(0, -2);
+                await utils.expectThrow(protocol.verifyTransaction(txData), 'Signature verifying failed');
+            });
+        });
 
-//         describe('Signer not sender', function() {
-//             it('should fail', async () => {
-//                 let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-//                 let txData = {
-//                     nonce: 0,
-//                     chainId: 'ETHEREUM',
-//                     from: ownerPk,
-//                     to: 'skywalker',
-//                     data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-//                 }
-//                 let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-//                     Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-//                 let hash = keccak256(bData);
-//                 let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(user1Sk));
-//                 txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-//                 await utils.expectThrow(protocol.verifyTransaction(txData), 'Sender not signer');
-//             });
-//         });
+        describe('Sender not signer', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                txData.from = ownerPk;
+                await utils.expectThrow(protocol.verifyTransaction(txData), 'Sender not signer');
+            });
+        });
 
-//         describe('Nonce error', function() {
-//             it('should succeed', async () => {
-//                 let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-//                 let txData = {
-//                     nonce: 1,
-//                     chainId: 'ETHEREUM',
-//                     from: ownerPk,
-//                     to: 'skywalker',
-//                     data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-//                 }
-//                 let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-//                     Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-//                 let hash = keccak256(bData);
-//                 let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-//                 txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-//                 await utils.expectThrow(protocol.verifyTransaction(txData), 'Nonce error');
-//             });
-//         });
+        describe('Nonce error', function() {
+            it('should fail', async () => {
+                let nonce = '10';
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await utils.expectThrow(protocol.verifyTransaction(txData), 'Nonce error');
+            });
+        });
 
-//         describe('All conditions satisfied', function() {
-//             it('should succeed', async () => {
-//                 let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-//                 let txData = {
-//                     nonce: 0,
-//                     chainId: 'ETHEREUM',
-//                     from: ownerPk,
-//                     to: 'skywalker',
-//                     data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-//                 }
-//                 let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-//                     Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-//                 let hash = keccak256(bData);
-//                 let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-//                 txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-//                 await protocol.verifyTransaction(txData);
-//             });
+        describe('All conditions satisfied', function() {
+            it('should succeed', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await protocol.verifyTransaction(txData);
+                let count = await protocol.getTransactionCount(user1Pk);
+                assert(count == 1, "The count should be one");
+            });
+        });
 
-//             describe('Transaction count', function() {
-//                 it('should be one', async () => {
-//                     let count = await protocol.getTransactionCount(ownerPk);
-//                     assert(count == 1, "The count should be one");
-//                 });
-//             });
-//         });
+        describe('Cooling down', function() {
+            it('should fail', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await utils.expectThrow(protocol.verifyTransaction(txData), 'Transaction cooling down');
+            });
+        });
 
-//         describe('Cooling down', function() {
-//             it('should fail', async () => {
-//                 let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-//                 let txData = {
-//                     nonce: 1,
-//                     chainId: 'ETHEREUM',
-//                     from: ownerPk,
-//                     to: 'skywalker',
-//                     data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-//                 }
-//                 let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-//                     Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-//                 let hash = keccak256(bData);
-//                 let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-//                 txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-//                 await utils.expectThrow(protocol.verifyTransaction(txData), 'Transaction cooling down');
-//             });
-//         });
+        describe('Transaction duplicated', function() {
+            it('should fail', async () => {
+                let nonce = '0';
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await utils.expectThrow(protocol.verifyTransaction(txData), 'Transaction duplicated');
+            });
+        });
 
-//         describe('Transaction duplicated', function() {
-//             it('should fail', async () => {
-//                 let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-//                 let txData = {
-//                     nonce: 0,
-//                     chainId: 'ETHEREUM',
-//                     from: ownerPk,
-//                     to: 'skywalker',
-//                     data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-//                 }
-//                 let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-//                     Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-//                 let hash = keccak256(bData);
-//                 let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-//                 txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-//                 await utils.expectThrow(protocol.verifyTransaction(txData), 'Transaction duplicated');
-//             });
-//         });
+        describe('Malicious', function() {
+            it('should fail', async () => {
+                let nonce = '0';
+                let txData = encodeMint({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await protocol.verifyTransaction(txData);
+                let malicious = await protocol.isMalicious(user1Pk);
+                assert(malicious, "It should be malicious");
+            });
+        });
 
-//         describe('Malicious', function() {
-//             it('should fail', async () => {
-//                 let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-//                 let txData = {
-//                     nonce: 0,
-//                     chainId: 'ETHEREUM',
-//                     from: ownerPk,
-//                     to: 'skywalker1',
-//                     data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-//                 }
-//                 let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-//                     Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-//                 let hash = keccak256(bData);
-//                 let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-//                 txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-//                 await protocol.verifyTransaction(txData);
-//                 let malicious = await protocol.isMalicious(ownerPk);
-//                 assert(malicious, "It should be malicious");
-//             });
-//         });
-
-//         describe('Cooled down', function() {
-//             it('should succeed', async () => {
-//                 await utils.sleep(COOL_DOWN);
-//                 await utils.evmMine(1);
-//                 let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [user2Pk, ONE_TOKEN]);
-//                 let txData = {
-//                     nonce: 1,
-//                     chainId: 'ETHEREUM',
-//                     from: ownerPk,
-//                     to: 'skywalker',
-//                     data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [0, transferData]),
-//                 }
-//                 let bData = Buffer.concat([Buffer.from(txData.nonce.padStart(32, '0'), 'hex'), Buffer.from(txData.chainId),
-//                     Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-//                 let hash = keccak256(bData);
-//                 let signature = secp256k1.ecdsaSign(Uint8Array.from(hash), Uint8Array.from(ownerSk));
-//                 txData.signature = '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
-//                 await protocol.verifyTransaction(txData);
-//                 let count = await protocol.getTransactionCount(ownerPk);
-//                 assert(count == 2);
-//             });
-//         });
-//     });
-// });
+        describe('Cooled down', function() {
+            it('should succeed', async () => {
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
+                await protocol.verifyTransaction(txData);
+                let count = await protocol.getTransactionCount(user1Pk);
+                assert(count == 2);
+            });
+        });
+    });
+});
     
 contract('SkywalkerFungible', function(accounts) {
     const owner = accounts[0];
@@ -591,86 +495,86 @@ contract('SkywalkerFungible', function(accounts) {
     //     });
     // });
     
-    describe('Transfer from', function() {
-        before(async function() {
-            await initContract();
-            await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
-            let nonce = await protocol.getTransactionCount(user1Pk);
-            let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
-            await locker.omniverseTransfer(txData);
-            await utils.sleep(COOL_DOWN);
-            await utils.evmMine(1);
-            let ret = await locker.triggerExecution();
-        });
+    // describe('Transfer from', function() {
+    //     before(async function() {
+    //         await initContract();
+    //         await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
+    //         let nonce = await protocol.getTransactionCount(user1Pk);
+    //         let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
+    //         await locker.omniverseTransfer(txData);
+    //         await utils.sleep(COOL_DOWN);
+    //         await utils.evmMine(1);
+    //         let ret = await locker.triggerExecution();
+    //     });
 
-        describe('Insufficient allowance', function() {
-            it('should fail', async () => {
-                let nonce = await protocol.getTransactionCount(user2Pk);
-                let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, HUNDRED_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
-                await utils.sleep(COOL_DOWN);
-                await utils.evmMine(1);
-                let ret = await locker.triggerExecution();
-                assert(ret.logs[0].event == 'OmniverseError');
-                assert(ret.logs[0].args[1] == 'Insufficient allowance');
-                let balance = await locker.balanceOf(user1);
-                assert(ONE_TOKEN == balance, 'Balance should be one');
-                balance = await locker.balanceOf(user2);
-                assert('0' == balance, 'Balance should be zero');
-                allowance = await locker.allowance(user1, user2);
-                assert(ONE_TOKEN == allowance, 'Allowance should be one');
-                balance = await locker.omniverseBalanceOf(user1Pk);
-                assert('0' == balance, 'Balance should be zero');
-                balance = await locker.omniverseBalanceOf(ownerPk);
-                assert('0' == balance, 'Balance should be zero');
-            });
-        });
+    //     describe('Insufficient allowance', function() {
+    //         it('should fail', async () => {
+    //             let nonce = await protocol.getTransactionCount(user2Pk);
+    //             let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, HUNDRED_TOKEN, nonce);
+    //             await locker.omniverseTransfer(txData);
+    //             await utils.sleep(COOL_DOWN);
+    //             await utils.evmMine(1);
+    //             let ret = await locker.triggerExecution();
+    //             assert(ret.logs[0].event == 'OmniverseError');
+    //             assert(ret.logs[0].args[1] == 'Insufficient allowance');
+    //             let balance = await locker.balanceOf(user1);
+    //             assert(ONE_TOKEN == balance, 'Balance should be one');
+    //             balance = await locker.balanceOf(user2);
+    //             assert('0' == balance, 'Balance should be zero');
+    //             allowance = await locker.allowance(user1, user2);
+    //             assert(ONE_TOKEN == allowance, 'Allowance should be one');
+    //             balance = await locker.omniverseBalanceOf(user1Pk);
+    //             assert('0' == balance, 'Balance should be zero');
+    //             balance = await locker.omniverseBalanceOf(ownerPk);
+    //             assert('0' == balance, 'Balance should be zero');
+    //         });
+    //     });
 
-        describe('Transfer amount exceeds balance', function() {
-            it('should fail', async () => {
-                let nonce = await protocol.getTransactionCount(user2Pk);
-                await locker.approve(user2, TEN_TOKEN, {from: user1});
-                let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, TEN_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
-                await utils.sleep(COOL_DOWN);
-                await utils.evmMine(1);
-                let ret = await locker.triggerExecution();
-                assert(ret.logs[0].event == 'OmniverseError');
-                assert(ret.logs[0].args[1] == 'Transfer amount exceeds balance');
-                let balance = await locker.balanceOf(user1);
-                assert(ONE_TOKEN == balance, 'Balance should be one');
-                balance = await locker.balanceOf(user2);
-                assert('0' == balance, 'Balance should be zero');
-                allowance = await locker.allowance(user1, user2);
-                assert(TEN_TOKEN == allowance, 'Allowance should be ten');
-                balance = await locker.omniverseBalanceOf(user1Pk);
-                assert('0' == balance, 'Balance should be zero');
-                balance = await locker.omniverseBalanceOf(ownerPk);
-                assert('0' == balance, 'Balance should be zero');
-            });
-        });
+    //     describe('Transfer amount exceeds balance', function() {
+    //         it('should fail', async () => {
+    //             let nonce = await protocol.getTransactionCount(user2Pk);
+    //             await locker.approve(user2, TEN_TOKEN, {from: user1});
+    //             let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, TEN_TOKEN, nonce);
+    //             await locker.omniverseTransfer(txData);
+    //             await utils.sleep(COOL_DOWN);
+    //             await utils.evmMine(1);
+    //             let ret = await locker.triggerExecution();
+    //             assert(ret.logs[0].event == 'OmniverseError');
+    //             assert(ret.logs[0].args[1] == 'Transfer amount exceeds balance');
+    //             let balance = await locker.balanceOf(user1);
+    //             assert(ONE_TOKEN == balance, 'Balance should be one');
+    //             balance = await locker.balanceOf(user2);
+    //             assert('0' == balance, 'Balance should be zero');
+    //             allowance = await locker.allowance(user1, user2);
+    //             assert(TEN_TOKEN == allowance, 'Allowance should be ten');
+    //             balance = await locker.omniverseBalanceOf(user1Pk);
+    //             assert('0' == balance, 'Balance should be zero');
+    //             balance = await locker.omniverseBalanceOf(ownerPk);
+    //             assert('0' == balance, 'Balance should be zero');
+    //         });
+    //     });
 
-        describe('Transfer amount exceeds balance', function() {
-            it('should succeed', async () => {
-                let nonce = await protocol.getTransactionCount(user2Pk);
-                await locker.approve(user2, ONE_TOKEN, {from: user1});
-                let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, ONE_TOKEN, nonce);
-                await locker.omniverseTransfer(txData);
-                await utils.sleep(COOL_DOWN);
-                await utils.evmMine(1);
-                let ret = await locker.triggerExecution();
-                assert(ret.logs[0].event == 'OmniverseTokenTransferFrom');
-                let balance = await locker.balanceOf(user1);
-                assert('0' == balance, 'Balance should be zero');
-                balance = await locker.balanceOf(user2);
-                assert('0' == balance, 'Balance should be zero');
-                allowance = await locker.allowance(user1, user2);
-                assert('0' == allowance, 'Allowance should be zero');
-                balance = await locker.omniverseBalanceOf(user1Pk);
-                assert('0' == balance, 'Balance should be zero');
-                balance = await locker.omniverseBalanceOf(ownerPk);
-                assert(ONE_TOKEN == balance, 'Balance should be one');
-            });
-        });
-    });
+    //     describe('Transfer amount exceeds balance', function() {
+    //         it('should succeed', async () => {
+    //             let nonce = await protocol.getTransactionCount(user2Pk);
+    //             await locker.approve(user2, ONE_TOKEN, {from: user1});
+    //             let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, ONE_TOKEN, nonce);
+    //             await locker.omniverseTransfer(txData);
+    //             await utils.sleep(COOL_DOWN);
+    //             await utils.evmMine(1);
+    //             let ret = await locker.triggerExecution();
+    //             assert(ret.logs[0].event == 'OmniverseTokenTransferFrom');
+    //             let balance = await locker.balanceOf(user1);
+    //             assert('0' == balance, 'Balance should be zero');
+    //             balance = await locker.balanceOf(user2);
+    //             assert('0' == balance, 'Balance should be zero');
+    //             allowance = await locker.allowance(user1, user2);
+    //             assert('0' == allowance, 'Allowance should be zero');
+    //             balance = await locker.omniverseBalanceOf(user1Pk);
+    //             assert('0' == balance, 'Balance should be zero');
+    //             balance = await locker.omniverseBalanceOf(ownerPk);
+    //             assert(ONE_TOKEN == balance, 'Balance should be one');
+    //         });
+    //     });
+    // });
 });
