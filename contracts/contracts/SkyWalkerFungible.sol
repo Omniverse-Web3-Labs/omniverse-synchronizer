@@ -200,6 +200,7 @@ contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
         uint256 fromBalance = _balances[fromAddr];
         if(fromBalance < _amount) {
             emit OmniverseError(_spender, "Transfer amount exceeds balance");
+            return;
         }
 
         // Update
