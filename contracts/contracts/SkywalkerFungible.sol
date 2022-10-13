@@ -6,7 +6,7 @@ import "./ERC20.sol";
 import "./interfaces/IOmniverseProtocol.sol";
 import "./interfaces/IOmniverseFungible.sol";
 
-contract SkyWalkerFungible is ERC20, Ownable, IOmniverseFungible {
+contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     struct DelayedTx {
         bytes sender;
         uint256 nonce;

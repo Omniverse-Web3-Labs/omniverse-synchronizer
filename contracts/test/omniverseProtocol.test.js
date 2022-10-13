@@ -18,7 +18,7 @@ const APPROVE = 2;
 const MINT = 3;
 
 const OmniverseProtocol = artifacts.require('./OmniverseProtocol.sol');
-const Locker = artifacts.require('./SkyWalkerFungible.sol');
+const Locker = artifacts.require('./SkywalkerFungible.sol');
 OmniverseProtocol.numberFormat = 'String';
 Locker.numberFormat = 'String';
 
