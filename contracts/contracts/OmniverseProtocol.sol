@@ -21,9 +21,13 @@ contract OmniverseProtocol is IOmniverseProtocol {
         EvilTxData[] evilTxList;
     }
 
-    string public chainId;
+    string private chainId;
     uint256 public cdTime;
     mapping(bytes => RecordedCertificate) transactionRecorder;
+
+    constructor(string memory _chainId) {
+        chainId = _chainId;
+    }
 
     /**
      * @dev See IOmniverseProtocl
@@ -97,6 +101,13 @@ contract OmniverseProtocol is IOmniverseProtocol {
 
     function setCooingDownTime(uint256 _time) external {
         cdTime = _time;
+    }
+
+    /**
+     * @dev Returns the chain ID
+     */
+    function getChainId() external view override returns (string memory) {
+        return chainId;
     }
 
     /**

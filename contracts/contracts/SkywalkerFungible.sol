@@ -80,7 +80,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         (uint8 op, bytes memory wrappedData) = abi.decode(txData.data, (uint8, bytes));
         if (op == APPROVE) {
             (bytes memory spender, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
-            _omniverseApprove(txData.from, spender, amount);
+            _omniverseApprove(txData.from, spender, amount, keccak256(bytes(txData.chainId)) == keccak256(bytes(omniverseProtocol.getChainId())));
         }
         else if (op == TRANSFER) {
             (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
@@ -88,7 +88,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         }
         else if (op == TRANSFER_FROM) {
             (bytes memory from, bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, bytes, uint256));
-            _omniverseTransferFrom(txData.from, from, to, amount);
+            _omniverseTransferFrom(txData.from, from, to, amount, keccak256(bytes(txData.chainId)) == keccak256(bytes(omniverseProtocol.getChainId())));
         }
         else if (op == MINT) {
             address fromAddr = pkToAddress(txData.from);
@@ -163,7 +163,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         }
     }
 
-    function _omniverseApprove(bytes memory _owner, bytes memory _spender, uint256 _amount) internal {
+    function _omniverseApprove(bytes memory _owner, bytes memory _spender, uint256 _amount, bool _thisChain) internal {
         uint256 ownerBalance = omniverseBalances[_owner];
         if (ownerBalance < _amount) {
             emit OmniverseTokenExceedBalance(_owner, ownerBalance, _amount);
@@ -173,41 +173,45 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
                 omniverseBalances[_owner] = ownerBalance - _amount;
             }
             
-            address ownerAddr = pkToAddress(_owner);
-            address spenderAddr = pkToAddress(_spender);
+            if (_thisChain) {
+                address ownerAddr = pkToAddress(_owner);
+                address spenderAddr = pkToAddress(_spender);
 
-            // mint
-            _totalSupply += _amount;
-            _balances[ownerAddr] += _amount;
-            // approve
-            _allowances[ownerAddr][spenderAddr] = _amount;
+                // mint
+                _totalSupply += _amount;
+                _balances[ownerAddr] += _amount;
+                // approve
+                _allowances[ownerAddr][spenderAddr] = _amount;
+            }
 
             emit OmniverseTokenApproval(_owner, _spender, _amount);
         }
     }
 
-    function _omniverseTransferFrom(bytes memory _spender, bytes memory _from, bytes memory _to, uint256 _amount) internal {
-        address spenderAddr = pkToAddress(_spender);
-        address fromAddr = pkToAddress(_from);
-        uint256 currentAllowance = _allowances[fromAddr][spenderAddr];
-        // Check
-        if(currentAllowance < _amount) {
-            emit OmniverseError(_spender, "Insufficient allowance");
-            return;
-        }
+    function _omniverseTransferFrom(bytes memory _spender, bytes memory _from, bytes memory _to, uint256 _amount, bool _thisChain) internal {
+        if (_thisChain) {
+            address spenderAddr = pkToAddress(_spender);
+            address fromAddr = pkToAddress(_from);
+            uint256 currentAllowance = _allowances[fromAddr][spenderAddr];
+            // Check
+            if(currentAllowance < _amount) {
+                emit OmniverseError(_spender, "Insufficient allowance");
+                return;
+            }
 
-        uint256 fromBalance = _balances[fromAddr];
-        if(fromBalance < _amount) {
-            emit OmniverseError(_spender, "Transfer amount exceeds balance");
-            return;
-        }
+            uint256 fromBalance = _balances[fromAddr];
+            if(fromBalance < _amount) {
+                emit OmniverseError(_spender, "Transfer amount exceeds balance");
+                return;
+            }
 
-        // Update
-        unchecked {
-            _allowances[fromAddr][spenderAddr] = currentAllowance - _amount;
-            _balances[fromAddr] = fromBalance - _amount;
+            // Update
+            unchecked {
+                _allowances[fromAddr][spenderAddr] = currentAllowance - _amount;
+                _balances[fromAddr] = fromBalance - _amount;
+            }
+            _totalSupply -= _amount;
         }
-        _totalSupply -= _amount;
 
         unchecked {
             omniverseBalances[_to] += _amount;

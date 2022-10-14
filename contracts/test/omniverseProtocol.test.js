@@ -6,6 +6,7 @@ const Web3 = require('web3');
 const web3js = new Web3(Web3.givenProvider);
 const assert = require('assert');
 
+const CHAIN_ID = 'ETHEREUM';
 const ONE_TOKEN = '1000000000000000000';
 const TEN_TOKEN = '10000000000000000000';
 const HUNDRED_TOKEN = '100000000000000000000';
@@ -49,7 +50,7 @@ let encodeMint = (from, toPk, amount, nonce) => {
     let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [toPk, amount]);
     let txData = {
         nonce: nonce,
-        chainId: 'ETHEREUM',
+        chainId: CHAIN_ID,
         from: from.pk,
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [MINT, transferData]),
@@ -64,7 +65,7 @@ let encodeTransfer = (from, toPk, amount, nonce) => {
     let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [toPk, amount]);
     let txData = {
         nonce: nonce,
-        chainId: 'ETHEREUM',
+        chainId: CHAIN_ID,
         from: from.pk,
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER, transferData]),
@@ -79,7 +80,7 @@ let encodeApprove = (from, toPk, amount, nonce) => {
     let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [toPk, amount]);
     let txData = {
         nonce: nonce,
-        chainId: 'ETHEREUM',
+        chainId: CHAIN_ID,
         from: from.pk,
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [APPROVE, transferData]),
@@ -94,7 +95,7 @@ let encodeTransferFrom = (spender, fromPk, toPk, amount, nonce) => {
     let transferData = web3js.eth.abi.encodeParameters(['bytes', 'bytes', 'uint256'], [fromPk, toPk, amount]);
     let txData = {
         nonce: nonce,
-        chainId: 'ETHEREUM',
+        chainId: CHAIN_ID,
         from: spender.pk,
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER_FROM, transferData]),
@@ -110,7 +111,7 @@ contract('OmniverseProtocol', function() {
     let locker;
 
     let initContract = async function() {
-        protocol = await OmniverseProtocol.new();
+        protocol = await OmniverseProtocol.new(CHAIN_ID);
         locker = await Locker.new(TOKEN_ID, TOKEN_ID, TOKEN_ID);
         await locker.setOmniverseProtocolAddress(protocol.address);
         await protocol.setCooingDownTime(COOL_DOWN);
@@ -206,7 +207,7 @@ contract('SkywalkerFungible', function() {
     let locker;
 
     let initContract = async function() {
-        protocol = await OmniverseProtocol.new({from: owner});
+        protocol = await OmniverseProtocol.new(CHAIN_ID, {from: owner});
         locker = await Locker.new(TOKEN_ID, TOKEN_ID, TOKEN_ID, {from: owner});
         await locker.setOmniverseProtocolAddress(protocol.address);
         await protocol.setCooingDownTime(COOL_DOWN);

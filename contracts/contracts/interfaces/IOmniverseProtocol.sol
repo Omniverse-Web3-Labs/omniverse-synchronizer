@@ -40,4 +40,9 @@ interface IOmniverseProtocol {
      * @dev Returns the cooling down time
      */
     function getCoolingDownTime() external view returns (uint256);
+
+    /**
+     * @dev Returns the chain ID
+     */
+    function getChainId() external view returns (string memory);
 }
