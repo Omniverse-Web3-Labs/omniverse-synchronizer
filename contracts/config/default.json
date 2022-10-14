@@ -17,9 +17,10 @@
 	},
 	"PLATONEVMDEV": {
 		"nodeAddress": "https://devnetopenapi2.platon.network/rpc",
-		"omniverseProtocolAddress": "0xC8E47782cfCE334ba6CAE697f67B4A33b7d1F3f6",
 		"chainId": 2203181,
-		"skywalkerFungibleAddress": "0x25e1f22a91c5DF1fA1695F9ac25406495DB7e171"
+		"omniverseProtocolAddress": "0xC8E47782cfCE334ba6CAE697f67B4A33b7d1F3f6",
+		"skywalkerFungibleAddress": "0x25e1f22a91c5DF1fA1695F9ac25406495DB7e171",
+		"coolingDown": 10
 	},
 	"MOONBASEALPHA": {
 		"nodeAddress": "https://rpc.api.moonbase.moonbeam.network",

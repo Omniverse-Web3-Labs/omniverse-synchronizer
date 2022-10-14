@@ -1,10 +1,15 @@
 const Web3 = require('web3');
+const BN = require('bn.js');
 const fs = require('fs');
 const ethereum = require('./ethereum');
 const { program } = require('commander');
 const config = require('config');
+const utils = require('./utils');
+const eccrypto = require('eccrypto');
+const keccak256 = require('keccak256');
+const secp256k1 = require('secp256k1');
 
-const TOKEN_ID = 'skywalker';
+const TOKEN_ID = 'Skywalker';
 
 const TRANSFER_FROM = 0;
 const TRANSFER = 1;
@@ -19,8 +24,11 @@ let skywalkerFungibleContract;
 
 // Private key
 let testAccountPrivateKey = fs.readFileSync('./.secret').toString();
-let privateKeyBuffer = Buffer.from(toByteArray(testAccountPrivateKey));
+let privateKeyBuffer = Buffer.from(utils.toByteArray(testAccountPrivateKey));
 let publicKeyBuffer = eccrypto.getPublic(privateKeyBuffer);
+let publicKey = '0x' + publicKeyBuffer.toString('hex').slice(2);
+// current account pk: 0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782
+// another account pk: 0x7bbd8873cfc30d3ddee2a7a9dcd2b5b399b85dab87c011ad4be96fe69625430e3f13947207ff4e595b43ee7f2bcd67d0b3252737286fea986787ea39bbdb6ab5
 
 function init(chainName) {
     chainId = chainName;
@@ -32,18 +40,18 @@ function init(chainName) {
 
     let omniverseProtocolAddress = netConfig.omniverseProtocolAddress;
     // Load contract abi, and init contract object
-    const crossChainRawData = fs.readFileSync('./build/contracts/OmniverseProtocol.json');
-    const crossChainAbi = JSON.parse(crossChainRawData).abi;
+    const omniverseProtocolRawData = fs.readFileSync('./build/contracts/OmniverseProtocol.json');
+    const omniverProtocolAbi = JSON.parse(omniverseProtocolRawData).abi;
     
     let skywalkerFungibleAddress = netConfig.skywalkerFungibleAddress;
     // Load contract abi, and init contract object
-    const routersCoreRawData = fs.readFileSync('./build/contracts/SkywalkerFungible.json');
-    const routersCoreAbi = JSON.parse(routersCoreRawData).abi;
+    const skywalkerFungibleRawData = fs.readFileSync('./build/contracts/SkywalkerFungible.json');
+    const skywalkerFungibleAbi = JSON.parse(skywalkerFungibleRawData).abi;
 
     web3 = new Web3(netConfig.nodeAddress);
     web3.eth.handleRevert = true;
-    omniverseProtocolContract = new web3.eth.Contract(crossChainAbi, omniverseProtocolAddress);
-    skywalkerFungibleContract = new web3.eth.Contract(routersCoreAbi, skywalkerFungibleAddress);
+    omniverseProtocolContract = new web3.eth.Contract(omniverProtocolAbi, omniverseProtocolAddress);
+    skywalkerFungibleContract = new web3.eth.Contract(skywalkerFungibleAbi, skywalkerFungibleAddress);
 
     return true;
 }
@@ -62,63 +70,92 @@ let getRawData = (txData) => {
 async function initialize() {
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'setOmniverseProtocolAddress',
         testAccountPrivateKey, [netConfig.omniverseProtocolAddress]);
+    await ethereum.sendTransaction(web3, netConfig.chainId, omniverseProtocolContract, 'coolingDown',
+        testAccountPrivateKey, [netConfig.coolingDown]);
 }
 
-async function transfer(to, amount) {
-    let nonce = await omniverseProtocolContract.getTransactionCount(publicKeyBuffer.toString('hex'));
-    let transferData = Web3.eth.abi.encodeParameters(['bytes', 'uint256'], [to, amount]);
+async function mint(to, amount) {
+    let nonce = await ethereum.contractCall(omniverseProtocolContract, 'getTransactionCount', [publicKey]);
+    let transferData = web3.eth.abi.encodeParameters(['bytes', 'uint256'], [to, amount]);
     let txData = {
         nonce: nonce,
         chainId: chainId,
-        from: publicKeyBuffer.toString('hex'),
+        from: publicKey,
         to: TOKEN_ID,
-        data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER, transferData]),
+        data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [MINT, transferData]),
     };
+    let bData = getRawData(txData);
+    let hash = keccak256(bData);
+    txData.signature = signData(hash, privateKeyBuffer);
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'omniverseTransfer', testAccountPrivateKey, [txData]);
 }
 
-async function approve(to, amount) {
-    let nonce = await omniverseProtocolContract.getTransactionCount(publicKeyBuffer.toString('hex'));
-    let transferData = Web3.eth.abi.encodeParameters(['bytes', 'uint256'], [to, amount]);
+async function transfer(to, amount) {
+    let nonce = await ethereum.contractCall(omniverseProtocolContract, 'getTransactionCount', [publicKey]);
+    let transferData = web3.eth.abi.encodeParameters(['bytes', 'uint256'], [to, amount]);
     let txData = {
         nonce: nonce,
         chainId: chainId,
-        from: publicKeyBuffer.toString('hex'),
+        from: publicKey,
         to: TOKEN_ID,
         data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER, transferData]),
     };
     let bData = getRawData(txData);
     let hash = keccak256(bData);
-    txData.signature = signData(hash, from.sk);
+    txData.signature = signData(hash, privateKeyBuffer);
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'omniverseTransfer', testAccountPrivateKey, [txData]);
 }
 
-async function transfer(to, amount) {
-    let nonce = await omniverseProtocolContract.getTransactionCount(publicKeyBuffer.toString('hex'));
-    let transferData = Web3.eth.abi.encodeParameters(['bytes', 'uint256'], [to, amount]);
+async function approve(to, amount) {
+    let nonce = await ethereum.contractCall(omniverseProtocolContract, 'getTransactionCount', [publicKey]);
+    let transferData = web3.eth.abi.encodeParameters(['bytes', 'uint256'], [to, amount]);
     let txData = {
         nonce: nonce,
         chainId: chainId,
-        from: publicKeyBuffer.toString('hex'),
+        from: publicKey,
         to: TOKEN_ID,
-        data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER, transferData]),
+        data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [APPROVE, transferData]),
     };
+    let bData = getRawData(txData);
+    let hash = keccak256(bData);
+    txData.signature = signData(hash, privateKeyBuffer);
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'omniverseTransfer', testAccountPrivateKey, [txData]);
 }
 
-async function test(address) {
-    // await ethereum.sendTransaction(web3, netConfig.chainId, omniverseProtocolContract, 'transferOwnership', testAccountPrivateKey, [address]);
-    
-    // let aa = await ethereum.contractCall(omniverseProtocolContract, 'getNextMessageId', ['FLOWTEST', '0x30ad2981E83615001fe698b6fBa1bbCb52C19Dfa']);
-    // let aa = await ethereum.contractCall(omniverseProtocolContract, 'getReceivedMessageNumber', ['SHIBUYA']);
-    // let aa = await ethereum.contractCall(omniverseProtocolContract, 'getSentMessageNumber', ['FLOWTEST']);
-    // let aa = await ethereum.contractCall(omniverseProtocolContract, 'getReceivedMessage', ['NEARTEST', '2']);
-    // let aa = await ethereum.contractCall(omniverseProtocolContract, 'getSentMessage', ['FLOWTEST', '1']);
-    let aa = await ethereum.contractCall(skywalkerFungibleContract, 'getSelectedRouters', []);
-    
-    console.log('aa', aa);
-    // let ret = await ethereum.sendTransaction(web3, netConfig.chainId, omniverseProtocolContract, 'executeMessage', testAccountPrivateKey, ['FLOWTEST2', 1]);
-    // console.log('ret', ret);
+async function transferFrom(from, to, amount) {
+    let nonce = await ethereum.contractCall(omniverseProtocolContract, 'getTransactionCount', [publicKey]);
+    let transferData = web3.eth.abi.encodeParameters(['bytes', 'bytes', 'uint256'], [from, to, amount]);
+    let txData = {
+        nonce: nonce,
+        chainId: chainId,
+        from: publicKey,
+        to: TOKEN_ID,
+        data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER_FROM, transferData]),
+    };
+    let bData = getRawData(txData);
+    let hash = keccak256(bData);
+    txData.signature = signData(hash, privateKeyBuffer);
+    await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'omniverseTransfer', testAccountPrivateKey, [txData]);
+}
+
+async function omniverseBalanceOf(pk) {
+    let amount = await ethereum.contractCall(skywalkerFungibleContract, 'omniverseBalanceOf', [pk]);
+    console.log('amount', amount);
+}
+
+async function balanceOf(address) {
+    let amount = await ethereum.contractCall(skywalkerFungibleContract, 'balanceOf', [address]);
+    console.log('amount', amount);
+}
+
+async function trigger() {
+    await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'triggerExecution',
+        testAccountPrivateKey, []);
+}
+
+async function getDelayedTx() {
+    let ret = await ethereum.contractCall(skywalkerFungibleContract, 'getExecutableDelayedTx', []);
+    console.log('ret', ret);
 }
 
 (async function () {
@@ -129,36 +166,108 @@ async function test(address) {
     program
         .version('0.1.0')
         .option('-i, --initialize <chain name>', 'Initialize omnioverse contracts')
-        .option('-c, --clear <chain name>,<dest chain name>', 'Clear data of cross chain contract', list)
-        .option('-t, --transfer <chain name>,<address>', 'Transfer ownership', list)
+        .option('-t, --transfer <chain name>,<pk>,<amount>', 'Transfer token', list)
+        .option('-a, --approve <chain name>,<pk>,<amount>', 'Approve token', list)
+        .option('-m, --mint <chain name>,<pk>,<amount>', 'Mint token', list)
+        .option('-f, --transferFrom <chain name>,<fromPk>,<toPk>,<amount>', 'Transfer token from an account', list)
+        .option('-o, --omniBalance <chain name>,<pk>', 'Query the balance of the omniverse token', list)
+        .option('-b, --balance <chain name>,<address>', 'Query the balance of the local token', list)
+        .option('-tr, --trigger <chain name>', 'Trigger the execution of delayed transactions', list)
+        .option('-d, --delayed <chain name>', 'Query an executable delayed transation', list)
         .parse(process.argv);
-
+console.log(program.opts());
     if (program.opts().initialize) {
         if (!init(program.opts().initialize)) {
             return;
         }
         await initialize();
     }
-    else if (program.opts().clear) {
-        if (program.opts().clear.length != 2) {
-            console.log('2 arguments are needed, but ' + program.opts().clear.length + ' provided');
+    else if (program.opts().approve) {
+        if (program.opts().approve.length != 3) {
+            console.log('3 arguments are needed, but ' + program.opts().approve.length + ' provided');
             return;
         }
         
-        if (!init(program.opts().clear[0])) {
+        if (!init(program.opts().approve[0])) {
             return;
         }
-        await clear(program.opts().clear[1]);
+        await approve(program.opts().approve[1], program.opts().approve[2]);
     }
     else if (program.opts().transfer) {
-        if (program.opts().transfer.length != 2) {
-            console.log('2 arguments are needed, but ' + program.opts().transfer.length + ' provided');
+        if (program.opts().transfer.length != 3) {
+            console.log('3 arguments are needed, but ' + program.opts().transfer.length + ' provided');
             return;
         }
         
         if (!init(program.opts().transfer[0])) {
             return;
         }
-        await transfer(program.opts().transfer[1]);
+        await transfer(program.opts().transfer[1], program.opts().transfer[2]);
+    }
+    else if (program.opts().transferFrom) {
+        if (program.opts().transferFrom.length != 4) {
+            console.log('4 arguments are needed, but ' + program.opts().transferFrom.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().transferFrom[0])) {
+            return;
+        }
+        await transferFrom(program.opts().transferFrom[1], program.opts().transferFrom[2], program.opts().transferFrom[3]);
+    }
+    else if (program.opts().mint) {
+        if (program.opts().mint.length != 3) {
+            console.log('3 arguments are needed, but ' + program.opts().mint.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().mint[0])) {
+            return;
+        }
+        await mint(program.opts().mint[1], program.opts().mint[2]);
+    }
+    else if (program.opts().omniBalance) {
+        if (program.opts().omniBalance.length != 2) {
+            console.log('2 arguments are needed, but ' + program.opts().omniBalance.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().omniBalance[0])) {
+            return;
+        }
+        await omniverseBalanceOf(program.opts().omniBalance[1]);
+    }
+    else if (program.opts().balance) {
+        if (program.opts().balance.length != 2) {
+            console.log('2 arguments are needed, but ' + program.opts().balance.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().balance[0])) {
+            return;
+        }
+        await balanceOf(program.opts().balance[1]);
+    }
+    else if (program.opts().trigger) {
+        if (program.opts().trigger.length != 1) {
+            console.log('1 arguments are needed, but ' + program.opts().trigger.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().trigger[0])) {
+            return;
+        }
+        await trigger();
+    }
+    else if (program.opts().delayed) {
+        if (program.opts().delayed.length != 1) {
+            console.log('1 arguments are needed, but ' + program.opts().delayed.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().delayed[0])) {
+            return;
+        }
+        await getDelayedTx();
     }
 }());
