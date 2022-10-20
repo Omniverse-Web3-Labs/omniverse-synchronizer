@@ -7,6 +7,7 @@ const web3js = new Web3(Web3.givenProvider);
 const assert = require('assert');
 
 const CHAIN_ID = 'ETHEREUM';
+const CHAIN_ID_OTHER = 'PLATON';
 const ONE_TOKEN = '1000000000000000000';
 const TEN_TOKEN = '10000000000000000000';
 const HUNDRED_TOKEN = '100000000000000000000';
@@ -76,11 +77,11 @@ let encodeTransfer = (from, toPk, amount, nonce) => {
     return txData;
 }
 
-let encodeApprove = (from, toPk, amount, nonce) => {
+let encodeApprove = (from, toPk, amount, nonce, chainId) => {
     let transferData = web3js.eth.abi.encodeParameters(['bytes', 'uint256'], [toPk, amount]);
     let txData = {
         nonce: nonce,
-        chainId: CHAIN_ID,
+        chainId: chainId ? chainId : CHAIN_ID,
         from: from.pk,
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [APPROVE, transferData]),
@@ -91,11 +92,11 @@ let encodeApprove = (from, toPk, amount, nonce) => {
     return txData;
 }
 
-let encodeTransferFrom = (spender, fromPk, toPk, amount, nonce) => {
+let encodeTransferFrom = (spender, fromPk, toPk, amount, nonce, chainId) => {
     let transferData = web3js.eth.abi.encodeParameters(['bytes', 'bytes', 'uint256'], [fromPk, toPk, amount]);
     let txData = {
         nonce: nonce,
-        chainId: CHAIN_ID,
+        chainId: chainId ? chainId : CHAIN_ID,
         from: spender.pk,
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER_FROM, transferData]),
@@ -152,9 +153,10 @@ contract('OmniverseProtocol', function() {
             it('should succeed', async () => {
                 let nonce = await protocol.getTransactionCount(user1Pk);
                 let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
-                await protocol.verifyTransaction(txData);
+                let ret = await protocol.verifyTransaction(txData);
                 let count = await protocol.getTransactionCount(user1Pk);
                 assert(count == 1, "The count should be one");
+                assert(ret.logs[0].event == 'TransactionSent');
             });
         });
 
@@ -190,9 +192,10 @@ contract('OmniverseProtocol', function() {
                 await utils.evmMine(1);
                 let nonce = await protocol.getTransactionCount(user1Pk);
                 let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
-                await protocol.verifyTransaction(txData);
+                let ret = await protocol.verifyTransaction(txData);
                 let count = await protocol.getTransactionCount(user1Pk);
                 assert(count == 2);
+                assert(ret.logs[0].event == 'TransactionSent');
             });
         });
     });
@@ -429,6 +432,31 @@ contract('SkywalkerFungible', function() {
                 assert(ONE_TOKEN == allowance, 'Allowance should be one');
             });
         });
+
+        describe('Message received from other chain', function() {
+            before(async function() {
+                await initContract();
+                await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
+            });
+
+            it('should succeed', async () => {
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce, CHAIN_ID_OTHER);
+                await locker.omniverseApprove(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseTokenApproval');
+                let balance = await locker.omniverseBalanceOf(user1Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.omniverseBalanceOf(user2Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.balanceOf(user1);
+                assert('0' == balance, 'Balance should be zero');
+                allowance = await locker.allowance(user1, user2);
+                assert('0' == allowance, 'Allowance should be zero');
+            });
+        });
     });
     
     describe('Transfer from', function() {
@@ -490,7 +518,7 @@ contract('SkywalkerFungible', function() {
             });
         });
 
-        describe('Transfer amount exceeds balance', function() {
+        describe('All conditions satisfied', function() {
             it('should succeed', async () => {
                 let nonce = await protocol.getTransactionCount(user2Pk);
                 await locker.approve(user2, ONE_TOKEN, {from: user1});
@@ -506,6 +534,40 @@ contract('SkywalkerFungible', function() {
                 assert('0' == balance, 'Balance should be zero');
                 allowance = await locker.allowance(user1, user2);
                 assert('0' == allowance, 'Allowance should be zero');
+                balance = await locker.omniverseBalanceOf(user1Pk);
+                assert('0' == balance, 'Balance should be zero');
+                balance = await locker.omniverseBalanceOf(ownerPk);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+            });
+        });
+
+        describe('Message received from other chain', function() {
+            before(async function() {
+                await initContract();
+                await mintToken({pk: ownerPk, sk: ownerSk}, user1Pk, ONE_TOKEN);
+                let nonce = await protocol.getTransactionCount(user1Pk);
+                let txData = encodeApprove({pk: user1Pk, sk: user1Sk}, user2Pk, ONE_TOKEN, nonce);
+                await locker.omniverseApprove(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+            });
+            
+            it('should succeed', async () => {
+                let nonce = await protocol.getTransactionCount(user2Pk);
+                await locker.approve(user2, ONE_TOKEN, {from: user1});
+                let txData = encodeTransferFrom({pk: user2Pk, sk: user2Sk}, user1Pk, ownerPk, ONE_TOKEN, nonce, CHAIN_ID_OTHER);
+                await locker.omniverseTransferFrom(txData);
+                await utils.sleep(COOL_DOWN);
+                await utils.evmMine(1);
+                let ret = await locker.triggerExecution();
+                assert(ret.logs[0].event == 'OmniverseTokenTransferFrom');
+                let balance = await locker.balanceOf(user1);
+                assert(ONE_TOKEN == balance, 'Balance should be one');
+                balance = await locker.balanceOf(user2);
+                assert('0' == balance, 'Balance should be zero');
+                allowance = await locker.allowance(user1, user2);
+                assert(ONE_TOKEN == allowance, 'Allowance should be one');
                 balance = await locker.omniverseBalanceOf(user1Pk);
                 assert('0' == balance, 'Balance should be zero');
                 balance = await locker.omniverseBalanceOf(ownerPk);
