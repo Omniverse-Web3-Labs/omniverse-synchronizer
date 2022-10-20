@@ -52,6 +52,9 @@ contract OmniverseProtocol is IOmniverseProtocol {
             OmniverseTx storage omniTx = rc.txList.push();
             omniTx.timestamp = block.timestamp;
             omniTx.txData = _data;
+            if (keccak256(bytes(_data.chainId)) == keccak256(bytes(chainId))) {
+                emit TransactionSent(_data.from, _data.nonce);
+            }
         }
         else if (nonce > _data.nonce) {
             // The message has been received, check conflicts
