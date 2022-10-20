@@ -14,7 +14,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
     IOmniverseProtocol public omniverseProtocol;
     string public tokenIdentity;
-    mapping(string => string) members;
+    string[] members;
     mapping(bytes => uint256) omniverseBalances;
     mapping(bytes => uint256) prisons;
     DelayedTx[] delayedTxs;
@@ -232,5 +232,9 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
     function getTime() external view returns (uint256) {
         return block.timestamp;
+    }
+
+    function getMembers() external view returns (string[] memory) {
+        return members;
     }
 }

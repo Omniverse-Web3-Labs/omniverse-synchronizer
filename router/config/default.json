@@ -1,0 +1,53 @@
+{
+  "scanInterval": 10,
+  "logLevel": "debug",
+  "secret": "config/.secret",
+  "networks": {
+    "PLATONEVM": {
+      "nodeAddress": "https://openapi.platon.network/rpc",
+      "chainId": 210425,
+      "omniverseProtocolContractAddress": "0xf61C4699B99d1988EB235AF06F270029D9Ed3b63",
+      "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
+      "skywalkerFungibleContractAddress": "0xf61C4699B99d1988EB235AF06F270029D9Ed3b63",
+      "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
+      "compatibleChain": "ethereum"
+    },
+    "RINKEBY": {
+      "nodeAddress": "https://rpc.ankr.com/eth_rinkeby",
+      "omniverseProtocolContractAddress": "0x2999fe13d3CAa63C0bC523E8D5b19A265637dbd2",
+      "abiPath": "./CrossChain.json",
+      "compatibleChain": "ethereum",
+      "receiveChains": ["FLOWTEST", "SHIBUYA", "PLATONEVM", "NEARTEST"],
+      "chainId": 4
+    },
+    "FLOWTEST": {
+      "nodeAddress": "https://rest-testnet.onflow.org",
+      "omniverseProtocolContractAddress": "0x5f37faed5f558aca",
+      "router": "0xc133efc4b43676a0",
+      "receiver": "0xc133efc4b43676a0",
+      "abiPath": "./cross_chain.json",
+      "compatibleChain": "flow",
+      "receiveChains": [
+        "RINKEBY", "PLATONEVM", "SHIBUYA", "NEARTEST"
+      ]
+    },
+    "SHIBUYA": {
+      "nodeAddress": "wss://public-rpc.pinknode.io/shibuya",
+      "omniverseProtocolContractAddress": "bhwyMxa3xW6HFVDtbtLmnKpgWPENW91mrg3257eciaXCiWP",
+      "abiPath": "./cross_chain.json",
+      "compatibleChain": "ink",
+      "receiveChains": ["NEARTEST", "FLOWTEST", "PLATONEVM", "RINKEBY"]
+    },
+    "NEARTEST": {
+      "networkId": "testnet",
+      "nodeUrl": "https://rpc.testnet.near.org",
+      "validatorAccountId": "d3f850b04799ebd4642e2a121b6060b950457da7c6df01deab24d056a3633f7d",
+      "validatorPublicKey": "ed25519:FGSdrd2cDi8nNnVjuBCkDK9f27U2gvruz9hrHZUchxwv",
+      "walletUrl": "https://wallet.testnet.near.org",
+      "helperUrl": "https://helper.testnet.near.org",
+      "omniverseProtocolContractAddress": "170165c66e33a744726f7f8cd36885cc43aa1e55f88273df5c6aed72e45711e6",
+      "receiveChains": ["SHIBUYA", "FLOWTEST", "PLATONEVM", "RINKEBY"],
+      "compatibleChain": "near"
+    }
+  }
+}
