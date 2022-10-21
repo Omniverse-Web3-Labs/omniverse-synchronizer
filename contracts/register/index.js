@@ -27,8 +27,8 @@ let testAccountPrivateKey = fs.readFileSync('./.secret').toString();
 let privateKeyBuffer = Buffer.from(utils.toByteArray(testAccountPrivateKey));
 let publicKeyBuffer = eccrypto.getPublic(privateKeyBuffer);
 let publicKey = '0x' + publicKeyBuffer.toString('hex').slice(2);
-// current account pk: 0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782
-// another account pk: 0x7bbd8873cfc30d3ddee2a7a9dcd2b5b399b85dab87c011ad4be96fe69625430e3f13947207ff4e595b43ee7f2bcd67d0b3252737286fea986787ea39bbdb6ab5
+// current account pk: 0x7bbd8873cfc30d3ddee2a7a9dcd2b5b399b85dab87c011ad4be96fe69625430e3f13947207ff4e595b43ee7f2bcd67d0b3252737286fea986787ea39bbdb6ab5
+// another account pk: 0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782
 
 function init(chainName) {
     chainId = chainName;
@@ -70,7 +70,7 @@ let getRawData = (txData) => {
 async function initialize() {
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'setOmniverseProtocolAddress',
         testAccountPrivateKey, [netConfig.omniverseProtocolAddress]);
-    await ethereum.sendTransaction(web3, netConfig.chainId, omniverseProtocolContract, 'coolingDown',
+    await ethereum.sendTransaction(web3, netConfig.chainId, omniverseProtocolContract, 'setCooingDownTime',
         testAccountPrivateKey, [netConfig.coolingDown]);
 }
 
@@ -175,7 +175,7 @@ async function getDelayedTx() {
         .option('-tr, --trigger <chain name>', 'Trigger the execution of delayed transactions', list)
         .option('-d, --delayed <chain name>', 'Query an executable delayed transation', list)
         .parse(process.argv);
-console.log(program.opts());
+
     if (program.opts().initialize) {
         if (!init(program.opts().initialize)) {
             return;
