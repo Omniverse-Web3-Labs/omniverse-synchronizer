@@ -2,7 +2,6 @@ const chainHandlerMgr = require('./basic/chainHandlerMgr');
 global.config = require('config');
 global.logger = require('./utils/logger');
 global.utils = require('./utils/utils');
-global.globalDefine = require('./utils/globalDefine');
 
 async function init() {
   await chainHandlerMgr.init();
@@ -14,7 +13,7 @@ async function main() {
   chainHandlerMgr.run();
   while (true) {
     try {
-      await relayerMgr.loop();
+      await chainHandlerMgr.loop();
     }
     catch (e) {
       logger.error(e);
