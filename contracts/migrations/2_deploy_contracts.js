@@ -1,12 +1,13 @@
 const OmniverseProtocol = artifacts.require("OmniverseProtocol");
 const SkywalkerFungible = artifacts.require("SkywalkerFungible");
+const fs = require("fs");
 
-module.exports = async function (deployer) {
-  await deployer.deploy(OmniverseProtocol, 'ETHEREUM');
+module.exports = async function (deployer, network) {
+  await deployer.deploy(OmniverseProtocol, network);
   await deployer.deploy(SkywalkerFungible, "Skywalker", "SW", "SW");
 
   // Update config
-  if (network.indexOf('-fork') != -1 || network == 'test') {
+  if (network.indexOf('-fork') != -1 || network == 'test' || network == 'development') {
     return;
   }
 
