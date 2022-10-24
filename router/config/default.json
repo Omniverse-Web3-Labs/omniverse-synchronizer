@@ -6,9 +6,18 @@
     "PLATONEVMDEV": {
       "nodeAddress": "wss://devnetopenapi2.platon.network/ws",
       "chainId": 2203181,
-      "omniverseProtocolContractAddress": "0xeEc1d796538c5986abFD0A8B6950260b201d0f6F",
+      "omniverseProtocolContractAddress": "0x4e42c8A5e019b023270Bd3969eaA8cE971136F8e",
       "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
-      "skywalkerFungibleContractAddress": "0xb7e284625c14B718a658E2F826E515B600856aa0",
+      "skywalkerFungibleContractAddress": "0x073902Ef5cc8702702482300764E90c7E88F2cD1",
+      "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
+      "compatibleChain": "ethereum"
+    },
+    "PLATONEVM": {
+      "nodeAddress": "wss://openapi.platon.network/ws",
+      "chainId": 210425,
+      "omniverseProtocolContractAddress": "0xD3591747a701E53814c7CaB103c7a07eD646e65C",
+      "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
+      "skywalkerFungibleContractAddress": "0xBb5215A86fCcc9269baE8aE73A820C5F02257eDd",
       "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
       "compatibleChain": "ethereum"
     }

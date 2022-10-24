@@ -140,22 +140,22 @@ class EthereumHandler {
 
   start(callback) {
     this.omniverseProtocolContract.events.TransactionSent()
-    .on("connected", function(subscriptionId){
+    .on("connected", (subscriptionId) => {
       logger.info('connected', subscriptionId);
     })
-    .on('data', async function(event){
+    .on('data', async (event) => {
       logger.debug('event', event);
       // to be continued, decoding is needed here for omniverse
       let message = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
       callback(message, members);
     })
-    .on('changed', function(event){
+    .on('changed', (event) => {
       // remove event from local database
       logger.info('changed');
       logger.debug(event);
     })
-    .on('error', function(error, receipt) {
+    .on('error', (error, receipt) => {
       // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
       logger.info('error', error);
       logger.info(receipt);

@@ -67,11 +67,12 @@ let getRawData = (txData) => {
     return bData;
 }
 
-async function initialize() {
+async function initialize(members) {
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'setOmniverseProtocolAddress',
         testAccountPrivateKey, [netConfig.omniverseProtocolAddress]);
     await ethereum.sendTransaction(web3, netConfig.chainId, omniverseProtocolContract, 'setCooingDownTime',
         testAccountPrivateKey, [netConfig.coolingDown]);
+    await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'addMembers', testAccountPrivateKey, [members]);
 }
 
 async function mint(to, amount) {
@@ -165,7 +166,7 @@ async function getDelayedTx() {
 
     program
         .version('0.1.0')
-        .option('-i, --initialize <chain name>', 'Initialize omnioverse contracts')
+        .option('-i, --initialize <chain name>,<member name>,...', 'Initialize omnioverse contracts', list)
         .option('-t, --transfer <chain name>,<pk>,<amount>', 'Transfer token', list)
         .option('-a, --approve <chain name>,<pk>,<amount>', 'Approve token', list)
         .option('-m, --mint <chain name>,<pk>,<amount>', 'Mint token', list)
@@ -177,10 +178,16 @@ async function getDelayedTx() {
         .parse(process.argv);
 
     if (program.opts().initialize) {
-        if (!init(program.opts().initialize)) {
+        if (program.opts().initialize.length <= 1) {
+            console.log('More than 1 arguments are needed');
             return;
         }
-        await initialize();
+        
+        if (!init(program.opts().initialize[0])) {
+            return;
+        }
+
+        await initialize(program.opts().initialize.slice(1));
     }
     else if (program.opts().approve) {
         if (program.opts().approve.length != 3) {

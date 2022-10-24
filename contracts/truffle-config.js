@@ -51,6 +51,11 @@ module.exports = {
       provider: () => new HDWalletProvider(mnemonic, `wss://devnetopenapi2.platon.network/ws`),
       network_id: "*",       // Any network (default: none)
     },
+    // PlatON main network based on evm
+    PLATONEVM: {
+      provider: () => new HDWalletProvider(mnemonic, `wss://openapi.platon.network/ws`),
+      network_id: "*",       // Any network (default: none)
+    },
     // Another network with more advanced options...
     // advanced: {
     // port: 8777,             // Custom port
