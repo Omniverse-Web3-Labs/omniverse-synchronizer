@@ -16,7 +16,7 @@ struct OmniverseTokenProtocol {
 }
 
 interface IOmniverseProtocol {
-    event TransactionSent(bytes indexed pk, uint256 nonce);
+    event TransactionSent(bytes pk, uint256 nonce);
 
     /**
      * @dev Verifies the signature of a transaction

@@ -19,13 +19,13 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     mapping(bytes => uint256) prisons;
     DelayedTx[] delayedTxs;
 
-    event OmniverseTokenTransfer(bytes indexed from, bytes indexed to, uint256 value);
-    event OmniverseTokenApproval(bytes indexed owner, bytes indexed spender, uint256 value);
-    event OmniverseTokenTransferFrom(bytes indexed from, bytes indexed to, uint256 value);
-    event OmniverseTokenExceedBalance(bytes indexed owner, uint256 balance, uint256 value);
-    event OmniverseTokenWrongOp(bytes indexed sender, uint8 op);
-    event OmniverseNotOwner(bytes indexed sender);
-    event OmniverseError(bytes indexed sender, string reason);
+    event OmniverseTokenTransfer(bytes from, bytes to, uint256 value);
+    event OmniverseTokenApproval(bytes owner, bytes spender, uint256 value);
+    event OmniverseTokenTransferFrom(bytes from, bytes to, uint256 value);
+    event OmniverseTokenExceedBalance(bytes owner, uint256 balance, uint256 value);
+    event OmniverseTokenWrongOp(bytes sender, uint8 op);
+    event OmniverseNotOwner(bytes sender);
+    event OmniverseError(bytes sender, string reason);
 
     constructor(string memory _tokenId, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
         tokenIdentity = _tokenId;
