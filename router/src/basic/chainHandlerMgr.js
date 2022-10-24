@@ -30,7 +30,9 @@ class chainHandlerMgr {
         for (let i in this.chainHandlers) {
             this.chainHandlers[i].start(function(message, members) {
                 for (let j in members) {
-                    this.chainHandlers[j].addMessageToList(message);
+                    if (i != j) {
+                        this.chainHandlers[j].addMessageToList(message);
+                    }
                 }
             });
         }
