@@ -23,12 +23,15 @@ let omniverseProtocolContract;
 let skywalkerFungibleContract;
 
 // Private key
-let testAccountPrivateKey = fs.readFileSync('./.secret').toString();
+let secret = JSON.parse(fs.readFileSync('./register/.secret').toString());
+let testAccountPrivateKey = secret.sks[secret.index];
 let privateKeyBuffer = Buffer.from(utils.toByteArray(testAccountPrivateKey));
 let publicKeyBuffer = eccrypto.getPublic(privateKeyBuffer);
 let publicKey = '0x' + publicKeyBuffer.toString('hex').slice(2);
-// current account pk: 0x7bbd8873cfc30d3ddee2a7a9dcd2b5b399b85dab87c011ad4be96fe69625430e3f13947207ff4e595b43ee7f2bcd67d0b3252737286fea986787ea39bbdb6ab5
-// another account pk: 0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782
+// the first account pk: 0x7bbd8873cfc30d3ddee2a7a9dcd2b5b399b85dab87c011ad4be96fe69625430e3f13947207ff4e595b43ee7f2bcd67d0b3252737286fea986787ea39bbdb6ab5
+// the first account address: 0xED911Ca21fDba9dB5f3B61b014B96A9Fab665Ff9
+// the second account pk: 0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782
+// the second account address: 0x30ad2981E83615001fe698b6fBa1bbCb52C19Dfa
 
 function init(chainName) {
     chainId = chainName;
@@ -159,6 +162,11 @@ async function getDelayedTx() {
     console.log('ret', ret);
 }
 
+async function getAllowance(owner, spender) {
+    let ret = await ethereum.contractCall(skywalkerFungibleContract, 'allowance', [owner, spender]);
+    console.log('ret', ret);
+}
+
 (async function () {
     function list(val) {
 		return val.split(',')
@@ -171,10 +179,12 @@ async function getDelayedTx() {
         .option('-a, --approve <chain name>,<pk>,<amount>', 'Approve token', list)
         .option('-m, --mint <chain name>,<pk>,<amount>', 'Mint token', list)
         .option('-f, --transferFrom <chain name>,<fromPk>,<toPk>,<amount>', 'Transfer token from an account', list)
+        .option('-p, --approval <chain name>,<address>,<address>', 'Approved token number', list)
         .option('-o, --omniBalance <chain name>,<pk>', 'Query the balance of the omniverse token', list)
         .option('-b, --balance <chain name>,<address>', 'Query the balance of the local token', list)
         .option('-tr, --trigger <chain name>', 'Trigger the execution of delayed transactions', list)
         .option('-d, --delayed <chain name>', 'Query an executable delayed transation', list)
+        .option('-s, --switch <index>', 'Switch the index of private key to be used')
         .parse(process.argv);
 
     if (program.opts().initialize) {
@@ -276,5 +286,20 @@ async function getDelayedTx() {
             return;
         }
         await getDelayedTx();
+    }
+    else if (program.opts().approval) {
+        if (program.opts().approval.length != 3) {
+            console.log('3 arguments are needed, but ' + program.opts().approval.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().approval[0])) {
+            return;
+        }
+        await getAllowance(program.opts().approval[1], program.opts().approval[2]);
+    }
+    else if (program.opts().switch) {
+        secret.index = parseInt(program.opts().switch);
+        fs.writeFileSync('./register/.secret', JSON.stringify(secret, null, '\t'));
     }
 }());

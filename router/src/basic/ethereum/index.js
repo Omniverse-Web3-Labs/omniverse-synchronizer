@@ -79,7 +79,7 @@ class EthereumHandler {
   async pushMessages() {
     for (let i = 0; i < this.messages.length; i++) {
       await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
-        this.testAccountPrivateKey, [message[i]]);
+        this.testAccountPrivateKey, [this.messages[i]]);
     }
     this.messages = [];
   }
@@ -148,7 +148,7 @@ class EthereumHandler {
       // to be continued, decoding is needed here for omniverse
       let message = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
-      callback(message, members);
+      callback(message.txData, members);
     })
     .on('changed', (event) => {
       // remove event from local database

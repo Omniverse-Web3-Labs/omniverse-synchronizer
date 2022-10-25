@@ -28,10 +28,10 @@ class chainHandlerMgr {
 
     run() {
         for (let i in this.chainHandlers) {
-            this.chainHandlers[i].start(function(message, members) {
+            this.chainHandlers[i].start((message, members) => {
                 for (let j in members) {
-                    if (i != j) {
-                        this.chainHandlers[j].addMessageToList(message);
+                    if (i != members[j]) {
+                        this.chainHandlers[members[j]].addMessageToList(message);
                     }
                 }
             });
