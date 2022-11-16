@@ -18,6 +18,9 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     mapping(bytes => uint256) omniverseBalances;
     mapping(bytes => uint256) prisons;
     DelayedTx[] delayedTxs;
+    bytes public committee;
+    DepositRequest[] depositRequests;
+    uint256 public depositDealingIndex;
 
     event OmniverseTokenTransfer(bytes from, bytes to, uint256 value);
     event OmniverseTokenApproval(bytes owner, bytes spender, uint256 value);
@@ -27,8 +30,21 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     event OmniverseNotOwner(bytes sender);
     event OmniverseError(bytes sender, string reason);
 
+    modifier onlyCommittee() {
+        address committeeAddr = pkToAddress(committee);
+        require(msg.sender == committeeAddr, "Not committee can approve deposits");
+        _;
+    }
+
     constructor(string memory _tokenId, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
         tokenIdentity = _tokenId;
+    }
+
+    /**
+     * @dev Set the address of committee
+     */
+    function setCommitteeAddress(bytes calldata _address) public onlyOwner {
+        committee = _address;
     }
 
     /**
@@ -189,29 +205,6 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     }
 
     function _omniverseTransferFrom(bytes memory _spender, bytes memory _from, bytes memory _to, uint256 _amount, bool _thisChain) internal {
-        if (_thisChain) {
-            address spenderAddr = pkToAddress(_spender);
-            address fromAddr = pkToAddress(_from);
-            uint256 currentAllowance = _allowances[fromAddr][spenderAddr];
-            // Check
-            if(currentAllowance < _amount) {
-                emit OmniverseError(_spender, "Insufficient allowance");
-                return;
-            }
-
-            uint256 fromBalance = _balances[fromAddr];
-            if(fromBalance < _amount) {
-                emit OmniverseError(_spender, "Transfer amount exceeds balance");
-                return;
-            }
-
-            // Update
-            unchecked {
-                _allowances[fromAddr][spenderAddr] = currentAllowance - _amount;
-                _balances[fromAddr] = fromBalance - _amount;
-            }
-            _totalSupply -= _amount;
-        }
 
         unchecked {
             omniverseBalances[_to] += _amount;
@@ -247,5 +240,54 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
     function getMembers() external view returns (string[] memory) {
         return members;
+    }
+
+    /**
+     * @dev Users request to convert native token to omniverse token
+     */
+    function requestDeposit(bytes calldata from, uint256 amount) external {
+        address fromAddr = pkToAddress(from);
+        require(fromAddr == msg.sender, "Signer and receiver not match");
+
+        uint256 fromBalance = _balances[fromAddr];
+        require(fromBalance >= amount, "Deposit amount exceeds balance");
+
+        // Update
+        unchecked {
+            _balances[fromAddr] = fromBalance - amount;
+        }
+        _totalSupply -= amount;
+
+        depositRequests.push(DepositRequest(from, amount));
+    }
+
+    /**
+     * @dev The committee approves a user's request
+     */
+    function approveDeposit(uint256 index, uint256 nonce, bytes calldata signature) external onlyCommittee {
+        require(index == depositDealingIndex, "Index is not current");
+
+        DepositRequest storage request = depositRequests[index];
+        depositDealingIndex++;
+
+        OmniverseTokenProtocol memory p;
+        p.nonce = nonce;
+        p.chainId = omniverseProtocol.getChainId();
+        p.from = committee;
+        p.to = tokenIdentity;
+        p.signature = signature;
+        p.data = abi.encode(TRANSFER_FROM, abi.encode(request.receiver, request.amount));
+        this.omniverseTransferFrom(p);
+    }
+
+    /**
+     @dev Returns the deposit request at `index`
+     @param index: The index of requests
+     @return ret: Deposit request
+     */
+    function getDepositRequest(uint256 index) external view returns (DepositRequest memory ret) {
+        if (depositRequests.length > index) {
+            ret = depositRequests[index];
+        }
     }
 }

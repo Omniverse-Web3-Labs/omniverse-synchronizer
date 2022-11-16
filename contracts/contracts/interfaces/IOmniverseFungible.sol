@@ -8,6 +8,11 @@ uint8 constant TRANSFER = 1;
 uint8 constant APPROVE = 2;
 uint8 constant MINT = 3;
 
+struct DepositRequest {
+    bytes receiver;
+    uint256 amount;
+}
+
 interface IOmniverseFungible {
     /**
      * @dev Transfer omniverse tokens to a user
