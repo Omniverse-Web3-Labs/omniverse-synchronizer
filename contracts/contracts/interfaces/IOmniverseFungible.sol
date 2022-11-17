@@ -3,9 +3,9 @@ pragma solidity >=0.8.0 <0.9.0;
 
 import "./IOmniverseProtocol.sol";
 
-uint8 constant TRANSFER_FROM = 0;
+uint8 constant DEPOSIT = 0;
 uint8 constant TRANSFER = 1;
-uint8 constant APPROVE = 2;
+uint8 constant WITHDRAW = 2;
 uint8 constant MINT = 3;
 
 struct DepositRequest {
@@ -20,14 +20,14 @@ interface IOmniverseFungible {
     function omniverseTransfer(OmniverseTokenProtocol calldata _data) external;
 
     /**
-     * @dev Approve omniverse tokens for a user
+     * @dev Convert omniverse token to ERC20 token
      */
-    function omniverseApprove(OmniverseTokenProtocol calldata _data) external;
+    function omniverseWithdraw(OmniverseTokenProtocol calldata _data) external;
 
     /**
-     * @dev Transfer omniverse tokens from a user to another user
+     * @dev Convert ERC20 token to omniverse token
      */
-    function omniverseTransferFrom(OmniverseTokenProtocol calldata _data) external;
+    function omniverseDeposit(OmniverseTokenProtocol calldata _data) external;
 
     /**
      * @dev Returns the omniverse balance of a user

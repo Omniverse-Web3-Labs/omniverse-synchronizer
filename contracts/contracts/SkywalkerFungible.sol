@@ -23,8 +23,8 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     uint256 public depositDealingIndex;
 
     event OmniverseTokenTransfer(bytes from, bytes to, uint256 value);
-    event OmniverseTokenApproval(bytes owner, bytes spender, uint256 value);
-    event OmniverseTokenTransferFrom(bytes from, bytes to, uint256 value);
+    event OmniverseTokenWithdraw(bytes from, uint256 value);
+    event OmniverseTokenDeposit(bytes to, uint256 value);
     event OmniverseTokenExceedBalance(bytes owner, uint256 balance, uint256 value);
     event OmniverseTokenWrongOp(bytes sender, uint8 op);
     event OmniverseNotOwner(bytes sender);
@@ -32,7 +32,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
     modifier onlyCommittee() {
         address committeeAddr = pkToAddress(committee);
-        require(msg.sender == committeeAddr, "Not committee can approve deposits");
+        require(msg.sender == committeeAddr, "Only committee can approve deposits");
         _;
     }
 
@@ -63,18 +63,18 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     }
 
     /**
-     * @dev See {IOmniverseFungible-omniverseApprove}
-     * Approve omniverse tokens for a user
+     * @dev See {IOmniverseFungible-omniverseWithdraw}
+     * Convert omniverse token to ERC20 token
      */
-    function omniverseApprove(OmniverseTokenProtocol calldata _data) external override {
+    function omniverseWithdraw(OmniverseTokenProtocol calldata _data) external override {
         _omniverseTransaction(_data);
     }
 
     /**
-     * @dev See {IOmniverseFungible-omniverseTransferFrom}
-     * Transfer omniverse tokens from a user to another user
+     * @dev See {IOmniverseFungible-omniverseDeposit}
+     * Convert ERC20 token to omniverse token
      */
-    function omniverseTransferFrom(OmniverseTokenProtocol calldata _data) external override {
+    function omniverseDeposit(OmniverseTokenProtocol calldata _data) external override {
         _omniverseTransaction(_data);
     }
 
@@ -94,17 +94,17 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         delayedTxs.pop();
 
         (uint8 op, bytes memory wrappedData) = abi.decode(txData.data, (uint8, bytes));
-        if (op == APPROVE) {
-            (bytes memory spender, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
-            _omniverseApprove(txData.from, spender, amount, keccak256(bytes(txData.chainId)) == keccak256(bytes(omniverseProtocol.getChainId())));
+        if (op == WITHDRAW) {
+            (uint256 amount) = abi.decode(wrappedData, (uint256));
+            _omniverseWithdraw(txData.from, amount, keccak256(bytes(txData.chainId)) == keccak256(bytes(omniverseProtocol.getChainId())));
         }
         else if (op == TRANSFER) {
             (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
             _omniverseTransfer(txData.from, to, amount);
         }
-        else if (op == TRANSFER_FROM) {
-            (bytes memory from, bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, bytes, uint256));
-            _omniverseTransferFrom(txData.from, from, to, amount, keccak256(bytes(txData.chainId)) == keccak256(bytes(omniverseProtocol.getChainId())));
+        else if (op == DEPOSIT) {
+            (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
+            _omniverseDeposit(txData.from, to, amount);
         }
         else if (op == MINT) {
             address fromAddr = pkToAddress(txData.from);
@@ -179,38 +179,36 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         }
     }
 
-    function _omniverseApprove(bytes memory _owner, bytes memory _spender, uint256 _amount, bool _thisChain) internal {
-        uint256 ownerBalance = omniverseBalances[_owner];
-        if (ownerBalance < _amount) {
-            emit OmniverseTokenExceedBalance(_owner, ownerBalance, _amount);
+    function _omniverseWithdraw(bytes memory _from, uint256 _amount, bool _thisChain) internal {
+        uint256 fromBalance = omniverseBalances[_from];
+        if (fromBalance < _amount) {
+            emit OmniverseTokenExceedBalance(_from, fromBalance, _amount);
         }
         else {
             unchecked {
-                omniverseBalances[_owner] = ownerBalance - _amount;
+                omniverseBalances[_from] = fromBalance - _amount;
             }
             
             if (_thisChain) {
-                address ownerAddr = pkToAddress(_owner);
-                address spenderAddr = pkToAddress(_spender);
+                address ownerAddr = pkToAddress(_from);
 
                 // mint
                 _totalSupply += _amount;
                 _balances[ownerAddr] += _amount;
-                // approve
-                _allowances[ownerAddr][spenderAddr] = _amount;
             }
 
-            emit OmniverseTokenApproval(_owner, _spender, _amount);
+            emit OmniverseTokenWithdraw(_from, _amount);
         }
     }
 
-    function _omniverseTransferFrom(bytes memory _spender, bytes memory _from, bytes memory _to, uint256 _amount, bool _thisChain) internal {
+    function _omniverseDeposit(bytes memory _from, bytes memory _to, uint256 _amount) internal {
+        require(keccak256(_from) == keccak256(committee), "Not the committee");
 
         unchecked {
             omniverseBalances[_to] += _amount;
         }
 
-        emit OmniverseTokenTransferFrom(_from, _to, _amount);
+        emit OmniverseTokenDeposit(_to, _amount);
     }
 
     function _omniverseMint(bytes memory _to, uint256 _amount) internal {
@@ -276,14 +274,13 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         p.from = committee;
         p.to = tokenIdentity;
         p.signature = signature;
-        p.data = abi.encode(TRANSFER_FROM, abi.encode(request.receiver, request.amount));
-        this.omniverseTransferFrom(p);
+        p.data = abi.encode(DEPOSIT, abi.encode(request.receiver, request.amount));
+        _omniverseTransaction(p);
     }
 
     /**
      @dev Returns the deposit request at `index`
      @param index: The index of requests
-     @return ret: Deposit request
      */
     function getDepositRequest(uint256 index) external view returns (DepositRequest memory ret) {
         if (depositRequests.length > index) {
