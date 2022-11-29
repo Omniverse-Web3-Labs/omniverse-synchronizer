@@ -169,7 +169,7 @@ async function getAllowance(owner, spender) {
 
     program
         .version('0.1.0')
-        .option('-i, --initialize <chain name>,<member name>,...', 'Initialize omnioverse contracts', list)
+        .option('-i, --initialize <chain name>,<committee address>,<member name>,...', 'Initialize omnioverse contracts', list)
         .option('-t, --transfer <chain name>,<pk>,<amount>', 'Transfer token', list)
         .option('-a, --withdraw <chain name>,<amount>', 'Withdraw token', list)
         .option('-ad, --approve_deposit <chain name>,<index>,<nonce>,<signature>', 'Approve deposit', list)
