@@ -129,6 +129,11 @@ async function withdraw(amount) {
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'omniverseTransfer', testAccountPrivateKey, [txData]);
 }
 
+async function getDepositRequest(index) {
+    let ret = await ethereum.contractCall(skywalkerFungibleContract, 'getDepositRequest', [index]);
+    console.log(ret);
+}
+
 async function deposit(from, amount) {
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'requestDeposit', testAccountPrivateKey, [from, amount]);
 }
@@ -174,7 +179,8 @@ async function getAllowance(owner, spender) {
         .option('-a, --withdraw <chain name>,<amount>', 'Withdraw token', list)
         .option('-ad, --approve_deposit <chain name>,<index>,<nonce>,<signature>', 'Approve deposit', list)
         .option('-m, --mint <chain name>,<pk>,<amount>', 'Mint token', list)
-        .option('-f, --deposit <chain name>,<fromPk>,<toPk>,<amount>', 'Transfer token from an account', list)
+        .option('-dr, --deposit_request <chain name>,<index>', 'Get deposit request', list)
+        .option('-f, --deposit <chain name>,<fromPk>,<amount>', 'Transfer token from an account', list)
         .option('-p, --approval <chain name>,<address>,<address>', 'Approved token number', list)
         .option('-o, --omniBalance <chain name>,<pk>', 'Query the balance of the omniverse token', list)
         .option('-b, --balance <chain name>,<address>', 'Query the balance of the local token', list)
@@ -238,6 +244,17 @@ async function getAllowance(owner, spender) {
             return;
         }
         await deposit(program.opts().deposit[1], program.opts().deposit[2]);
+    }
+    else if (program.opts().deposit_request) {
+        if (program.opts().deposit_request.length != 2) {
+            console.log('2 arguments are needed, but ' + program.opts().deposit_request.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().deposit_request[0])) {
+            return;
+        }
+        await getDepositRequest(program.opts().deposit_request[1]);
     }
     else if (program.opts().mint) {
         if (program.opts().mint.length != 3) {
