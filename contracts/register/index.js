@@ -28,8 +28,8 @@ let testAccountPrivateKey = secret.sks[secret.index];
 let privateKeyBuffer = Buffer.from(utils.toByteArray(testAccountPrivateKey));
 let publicKeyBuffer = eccrypto.getPublic(privateKeyBuffer);
 let publicKey = '0x' + publicKeyBuffer.toString('hex').slice(2);
-// the first account pk: 0x7bbd8873cfc30d3ddee2a7a9dcd2b5b399b85dab87c011ad4be96fe69625430e3f13947207ff4e595b43ee7f2bcd67d0b3252737286fea986787ea39bbdb6ab5
-// the first account address: 0xED911Ca21fDba9dB5f3B61b014B96A9Fab665Ff9
+// the first account pk: 0x878fc1c8fe074eec6999cd5677bf09a58076529c2e69272e1b751c2e6d9f9d13ed0165bc1edfe149e6640ea5dd1dc27f210de6cbe61426c988472e7c74f4cc29
+// the first account address: 0xD6d27b2E732852D8f8409b1991d6Bf0cB94dd201
 // the second account pk: 0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782
 // the second account address: 0x30ad2981E83615001fe698b6fBa1bbCb52C19Dfa
 // the second account pk: 0xcc643d259ada7570872ef9a4fd30b196f5b3a3bae0a6ffabd57fb6a3367fb6d3c5f45cb61994dbccd619bb6f11c522f71a5f636781a1f234fd79ec93bea579d3
