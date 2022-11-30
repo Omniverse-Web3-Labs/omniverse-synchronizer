@@ -22,7 +22,17 @@ class EthereumHandler {
 
   async init() {
     logger.info(utils.format("Init handler: {0}, compatible chain: {1}", this.chainName, "ethereum"));
-    this.web3 = new Web3(config.get('networks.' + this.chainName + '.nodeAddress'));
+    // Enable auto reconnection
+    const options = {
+      reconnect: {
+        auto: true,
+        delay: 1000, // ms
+        maxAttempts: 5,
+        onTimeout: false
+      }
+    };
+    let provider = new Web3.providers.WebsocketProvider(config.get('networks.' + this.chainName + '.nodeAddress'), options);
+    this.web3 = new Web3(provider);
     this.web3.eth.handleRevert = true;
     let secret = JSON.parse(fs.readFileSync(config.get('secret')));
     this.testAccountPrivateKey = secret[this.chainName];
@@ -78,8 +88,12 @@ class EthereumHandler {
 
   async pushMessages() {
     for (let i = 0; i < this.messages.length; i++) {
-      await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
+      let ret = await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
         this.testAccountPrivateKey, [this.messages[i]]);
+      if (ret == null) {
+        console.log('Push messages failed', this.chainName);
+        return;
+      }
     }
     this.messages = [];
   }
@@ -157,8 +171,8 @@ class EthereumHandler {
     })
     .on('error', (error, receipt) => {
       // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-      logger.info('error', error);
-      logger.info(receipt);
+      logger.info('error', this.chainName, error);
+      logger.info('receipt', receipt);
     });
   }
 
