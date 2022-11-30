@@ -172,6 +172,11 @@ async function deposit(from, amount) {
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'requestDeposit', testAccountPrivateKey, [from, amount]);
 }
 
+async function getNonce(pk) {
+    let nonce = await ethereum.contractCall(omniverseProtocolContract, 'getTransactionCount', [pk]);
+    console.log(nonce);
+}
+
 async function approveDeposit(index) {
     let ret = await ethereum.contractCall(skywalkerFungibleContract, 'getDepositRequest', [index]);
     if (ret.receiver == '0x') {
@@ -229,7 +234,7 @@ async function getAllowance(owner, spender) {
         .option('-i, --initialize <chain name>,<committee address>,<member name>,...', 'Initialize omnioverse contracts', list)
         .option('-t, --transfer <chain name>,<pk>,<amount>', 'Transfer token', list)
         .option('-a, --withdraw <chain name>,<amount>', 'Withdraw token', list)
-        .option('-ad, --approve_deposit <chain name>,<index>,<nonce>,<signature>', 'Approve deposit', list)
+        .option('-ad, --approve_deposit <chain name>,<index>', 'Approve deposit', list)
         .option('-m, --mint <chain name>,<pk>,<amount>', 'Mint token', list)
         .option('-dr, --deposit_request <chain name>,<index>', 'Get deposit request', list)
         .option('-f, --deposit <chain name>,<fromPk>,<amount>', 'Transfer token from an account', list)
@@ -240,6 +245,7 @@ async function getAllowance(owner, spender) {
         .option('-d, --delayed <chain name>', 'Query an executable delayed transation', list)
         .option('-s, --switch <index>', 'Switch the index of private key to be used')
         .option('-sc, --sync <chain name>,<to chain>,<pk>', 'Sync messages from one to the other chain', list)
+        .option('-n, --nonce <chain name>,<pk>', 'Nonce of a pk on a chain', list)
         .parse(process.argv);
 
     if (program.opts().initialize) {
@@ -374,6 +380,17 @@ async function getAllowance(owner, spender) {
             return;
         }
         await sync(program.opts().sync[1], program.opts().sync[2]);
+    }
+    else if (program.opts().nonce) {
+        if (program.opts().nonce.length != 2) {
+            console.log('2 arguments are needed, but ' + program.opts().nonce.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().nonce[0])) {
+            return;
+        }
+        await getNonce(program.opts().nonce[1]);
     }
     else if (program.opts().approval) {
         if (program.opts().approval.length != 3) {

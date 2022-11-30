@@ -160,6 +160,7 @@ class EthereumHandler {
     .on('data', async (event) => {
       logger.debug('event', event);
       // to be continued, decoding is needed here for omniverse
+      console.log(event.returnValues.pk, event.returnValues.nonce);
       let message = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
       callback(message.txData, members);
