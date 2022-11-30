@@ -30,17 +30,17 @@ let publicKeyBuffer = eccrypto.getPublic(privateKeyBuffer);
 let publicKey = '0x' + publicKeyBuffer.toString('hex').slice(2);
 // the first account pk: 0x878fc1c8fe074eec6999cd5677bf09a58076529c2e69272e1b751c2e6d9f9d13ed0165bc1edfe149e6640ea5dd1dc27f210de6cbe61426c988472e7c74f4cc29
 // the first account address: 0xD6d27b2E732852D8f8409b1991d6Bf0cB94dd201
-// the second account pk: 0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782
+// the second account pk: 0x1c0ae2fe60e7b9e91b3690626318c8759147c6daf96147d886d37b4df8dd8829db901b1a4bbb9374b35322660503495597332b3944e49985fa2e827797634799
 // the second account address: 0x30ad2981E83615001fe698b6fBa1bbCb52C19Dfa
 // the second account pk: 0xcc643d259ada7570872ef9a4fd30b196f5b3a3bae0a6ffabd57fb6a3367fb6d3c5f45cb61994dbccd619bb6f11c522f71a5f636781a1f234fd79ec93bea579d3
 // the second account address: 0x8408925fD39071270Ed1AcA5d618e1c79be08B27
 
-function init(chainName) {
-    chainId = chainName;
-    netConfig = config.get(chainName);
+function _init(chainName) {
+    let chainId = chainName;
+    let netConfig = config.get(chainName);
     if (!netConfig) {
         console.log('Config of chain (' + chainName + ') not exists');
-        return false;
+        return [false];
     }
 
     let omniverseProtocolAddress = netConfig.omniverseProtocolAddress;
@@ -53,12 +53,26 @@ function init(chainName) {
     const skywalkerFungibleRawData = fs.readFileSync('./build/contracts/SkywalkerFungible.json');
     const skywalkerFungibleAbi = JSON.parse(skywalkerFungibleRawData).abi;
 
-    web3 = new Web3(netConfig.nodeAddress);
+    let web3 = new Web3(netConfig.nodeAddress);
     web3.eth.handleRevert = true;
-    omniverseProtocolContract = new web3.eth.Contract(omniverProtocolAbi, omniverseProtocolAddress);
-    skywalkerFungibleContract = new web3.eth.Contract(skywalkerFungibleAbi, skywalkerFungibleAddress);
+    let omniverseProtocolContract = new web3.eth.Contract(omniverProtocolAbi, omniverseProtocolAddress);
+    let skywalkerFungibleContract = new web3.eth.Contract(skywalkerFungibleAbi, skywalkerFungibleAddress);
 
-    return true;
+    return [true, web3, omniverseProtocolContract, skywalkerFungibleContract, chainId, netConfig];
+}
+
+function init(chainName) {
+    let ret = _init(chainName);
+
+    if (ret[0]) {
+        web3 = ret[1];
+        omniverseProtocolContract = ret[2];
+        skywalkerFungibleContract = ret[3];
+        chainId = ret[4];
+        netConfig = ret[5];
+    }
+
+    return ret[0];
 }
 
 let signData = (hash, sk) => {
@@ -134,12 +148,50 @@ async function getDepositRequest(index) {
     console.log(ret);
 }
 
+async function sync(toChain, pk) {
+    let toChainInfo = _init(toChain);
+    if (!toChainInfo[0]) {
+        console.log('error init', toChain);
+        return;
+    }
+
+    let fromNonce = await ethereum.contractCall(omniverseProtocolContract, 'getTransactionCount', [pk]);
+    let toNonce = await ethereum.contractCall(toChainInfo[2], 'getTransactionCount', [pk]);
+    console.log('nonce', toNonce, fromNonce);
+    for (let n = parseInt(toNonce); n < parseInt(fromNonce); n++) {
+        let message = await ethereum.contractCall(omniverseProtocolContract, 'getTransactionData', [pk, n]);
+        let ret = await ethereum.sendTransaction(toChainInfo[1], toChainInfo[5].chainId, toChainInfo[3], 'omniverseTransfer',
+        testAccountPrivateKey, [message.txData]);
+        if (!ret) {
+            console.log('Send message failed');
+        }
+    }
+}
+
 async function deposit(from, amount) {
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'requestDeposit', testAccountPrivateKey, [from, amount]);
 }
 
-async function approveDeposit(index, nonce, signature) {
-    await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'approveDeposit', testAccountPrivateKey, [index, nonce, signature]);
+async function approveDeposit(index) {
+    let ret = await ethereum.contractCall(skywalkerFungibleContract, 'getDepositRequest', [index]);
+    if (ret.receiver == '0x') {
+        console.log('Request not valid');
+        return;
+    }
+
+    let nonce = await ethereum.contractCall(omniverseProtocolContract, 'getTransactionCount', [publicKey]);
+    let transferData = web3.eth.abi.encodeParameters(['bytes', 'uint256'], [ret.receiver, ret.amount]);
+    let txData = {
+        nonce: nonce,
+        chainId: chainId,
+        from: publicKey,
+        to: TOKEN_ID,
+        data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [DEPOSIT, transferData]),
+    };
+    let bData = getRawData(txData);
+    let hash = keccak256(bData);
+    txData.signature = signData(hash, privateKeyBuffer);
+    await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'approveDeposit', testAccountPrivateKey, [index, nonce, txData.signature]);
 }
 
 async function omniverseBalanceOf(pk) {
@@ -187,6 +239,7 @@ async function getAllowance(owner, spender) {
         .option('-tr, --trigger <chain name>', 'Trigger the execution of delayed transactions', list)
         .option('-d, --delayed <chain name>', 'Query an executable delayed transation', list)
         .option('-s, --switch <index>', 'Switch the index of private key to be used')
+        .option('-sc, --sync <chain name>,<to chain>,<pk>', 'Sync messages from one to the other chain', list)
         .parse(process.argv);
 
     if (program.opts().initialize) {
@@ -224,15 +277,15 @@ async function getAllowance(owner, spender) {
         await transfer(program.opts().transfer[1], program.opts().transfer[2]);
     }
     else if (program.opts().approve_deposit) {
-        if (program.opts().approve_deposit.length != 4) {
-            console.log('4 arguments are needed, but ' + program.opts().approve_deposit.length + ' provided');
+        if (program.opts().approve_deposit.length != 2) {
+            console.log('2 arguments are needed, but ' + program.opts().approve_deposit.length + ' provided');
             return;
         }
         
         if (!init(program.opts().approve_deposit[0])) {
             return;
         }
-        await approveDeposit(program.opts().approve_deposit[1], program.opts().approve_deposit[2], program.opts().approve_deposit[3]);
+        await approveDeposit(program.opts().approve_deposit[1]);
     }
     else if (program.opts().deposit) {
         if (program.opts().deposit.length != 3) {
@@ -310,6 +363,17 @@ async function getAllowance(owner, spender) {
             return;
         }
         await getDelayedTx();
+    }
+    else if (program.opts().sync) {
+        if (program.opts().sync.length != 3) {
+            console.log('3 arguments are needed, but ' + program.opts().sync.length + ' provided');
+            return;
+        }
+        
+        if (!init(program.opts().sync[0])) {
+            return;
+        }
+        await sync(program.opts().sync[1], program.opts().sync[2]);
     }
     else if (program.opts().approval) {
         if (program.opts().approval.length != 3) {
