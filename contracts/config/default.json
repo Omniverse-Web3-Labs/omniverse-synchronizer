@@ -3,7 +3,7 @@
 		"nodeAddress": "https://api.avax-test.network/ext/bc/C/rpc",
 		"omniverseProtocolAddress": "0x8177cBe1c9a0B08B536C55097b569dfaEc5cb520",
 		"chainId": 43113,
-		"omniverseChainId": 43113
+		"omniverseChainId": 0
 	},
 	"BSCTEST": {
 		"nodeAddress": "https://bsc-testnet.public.blastapi.io",
@@ -11,13 +11,14 @@
 		"omniverseProtocolAddress": "0xb28Fbbe8577f11cE200baEa3345ed5D7D39bbcf3",
 		"skywalkerFungibleAddress": "0xa60d0133b3c34c4aF4BE82Cf96073699810Bf945",
 		"coolingDown": 10,
-		"omniverseChainId": 97
+		"omniverseChainId": 1
 	},
 	"RINKEBY": {
 		"nodeAddress": "https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
 		"omniverseProtocolAddress": "0x2999fe13d3CAa63C0bC523E8D5b19A265637dbd2",
 		"chainId": 4,
-		"skywalkerFungibleAddress": "0x63b66c0a293812bcC0F7aE470f577608511BD524"
+		"skywalkerFungibleAddress": "0x63b66c0a293812bcC0F7aE470f577608511BD524",
+		"omniverseChainId": 2
 	},
 	"PLATONEVMDEV": {
 		"nodeAddress": "https://devnet2openapi.platon.network/rpc",
@@ -25,7 +26,7 @@
 		"omniverseProtocolAddress": "0xb28Fbbe8577f11cE200baEa3345ed5D7D39bbcf3",
 		"skywalkerFungibleAddress": "0xa60d0133b3c34c4aF4BE82Cf96073699810Bf945",
 		"coolingDown": 10,
-		"omniverseChainId": 2206132
+		"omniverseChainId": 3
 	},
 	"MOONBASEALPHA": {
 		"nodeAddress": "https://rpc.api.moonbase.moonbeam.network",
@@ -33,7 +34,7 @@
 		"chainId": 1287,
 		"skywalkerFungibleAddress": "0xa60d0133b3c34c4aF4BE82Cf96073699810Bf945",
 		"coolingDown": 10,
-		"omniverseChainId": 1287
+		"omniverseChainId": 4
 	},
 	"development": {
 		"omniverseProtocolAddress": "0x7a181d37207D93D0703B51c8d19d57989cDFC39c",
