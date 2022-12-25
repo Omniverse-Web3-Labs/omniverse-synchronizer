@@ -8,7 +8,7 @@ enum VerifyResult {
 
 struct OmniverseTokenProtocol {
     uint256 nonce;
-    string chainId;
+    uint8 chainId;
     bytes from;
     string to;
     bytes data;
@@ -46,5 +46,5 @@ interface IOmniverseProtocol {
     /**
      * @dev Returns the chain ID
      */
-    function getChainId() external view returns (string memory);
+    function getChainId() external view returns (uint8);
 }

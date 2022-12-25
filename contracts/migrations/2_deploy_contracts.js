@@ -3,7 +3,7 @@ const SkywalkerFungible = artifacts.require("SkywalkerFungible");
 const fs = require("fs");
 
 module.exports = async function (deployer, network) {
-  await deployer.deploy(OmniverseProtocol, network);
+  await deployer.deploy(OmniverseProtocol, 0);
   await deployer.deploy(SkywalkerFungible, "Skywalker", "SW", "SW");
 
   // Update config

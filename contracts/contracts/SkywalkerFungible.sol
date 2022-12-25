@@ -14,7 +14,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
     IOmniverseProtocol public omniverseProtocol;
     string public tokenIdentity;
-    string[] members;
+    uint8[] members;
     mapping(bytes => uint256) omniverseBalances;
     mapping(bytes => uint256) prisons;
     DelayedTx[] delayedTxs;
@@ -96,7 +96,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         (uint8 op, bytes memory wrappedData) = abi.decode(txData.data, (uint8, bytes));
         if (op == WITHDRAW) {
             (uint256 amount) = abi.decode(wrappedData, (uint256));
-            _omniverseWithdraw(txData.from, amount, keccak256(bytes(txData.chainId)) == keccak256(bytes(omniverseProtocol.getChainId())));
+            _omniverseWithdraw(txData.from, amount, txData.chainId == omniverseProtocol.getChainId());
         }
         else if (op == TRANSFER) {
             (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
@@ -225,10 +225,10 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         return block.timestamp;
     }
 
-    function addMembers(string[] calldata _members) external onlyOwner {
+    function addMembers(uint8[] calldata _members) external onlyOwner {
         for (uint256 i = 0; i < _members.length; i++) {
             for (uint256 j = 0; j < members.length; j++) {
-                if (keccak256(bytes(members[j])) == keccak256(bytes(_members[i]))) {
+                if (members[j] == _members[i]) {
                     break;
                 }
             }
@@ -236,7 +236,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         }
     }
 
-    function getMembers() external view returns (string[] memory) {
+    function getMembers() external view returns (uint8[] memory) {
         return members;
     }
 

@@ -21,11 +21,11 @@ contract OmniverseProtocol is IOmniverseProtocol {
         EvilTxData[] evilTxList;
     }
 
-    string private chainId;
+    uint8 private chainId;
     uint256 public cdTime;
     mapping(bytes => RecordedCertificate) transactionRecorder;
 
-    constructor(string memory _chainId) {
+    constructor(uint8 _chainId) {
         chainId = _chainId;
     }
 
@@ -52,7 +52,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
             OmniverseTx storage omniTx = rc.txList.push();
             omniTx.timestamp = block.timestamp;
             omniTx.txData = _data;
-            if (keccak256(bytes(_data.chainId)) == keccak256(bytes(chainId))) {
+            if (_data.chainId == chainId) {
                 emit TransactionSent(_data.from, _data.nonce);
             }
         }
@@ -109,7 +109,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev Returns the chain ID
      */
-    function getChainId() external view override returns (string memory) {
+    function getChainId() external view override returns (uint8) {
         return chainId;
     }
 
