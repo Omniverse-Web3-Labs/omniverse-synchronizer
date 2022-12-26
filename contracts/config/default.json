@@ -8,8 +8,9 @@
 	"BSCTEST": {
 		"nodeAddress": "https://bsc-testnet.public.blastapi.io",
 		"chainId": 97,
-		"omniverseProtocolAddress": "0x2530FBD1d25302ca62B918e3f817ff71c53394C6",
-		"skywalkerFungibleAddress": "0x4aA1d4b2Cc740D574FD833Ae04F261abd3970087",
+		"omniverseProtocolAddress": "0xDb948F3E088c30889679472E000929e68c3ce473",
+		"skywalkerFungibleAddress": "0xf45FbC436E7E4Dce993f9248721d87D8BcF5Ed8C",
+		"skywalkerFungibleAddressY": "0xC66Dcfd836F59c02fAfF7149e6114B29bDF18a59",
 		"coolingDown": 10,
 		"omniverseChainId": 1
 	},

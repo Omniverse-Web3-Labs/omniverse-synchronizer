@@ -12,7 +12,8 @@ module.exports = async function (deployer, network) {
   }
 
   await deployer.deploy(OmniverseProtocol, jsonData[network].omniverseChainId);
-  await deployer.deploy(SkywalkerFungible, "Skywalker", "SW", "SW");
+  await deployer.deploy(SkywalkerFungible, "X", "X", "X");
+  await deployer.deploy(SkywalkerFungible, "Y", "Y", "Y");
 
   // Update config
   if (network.indexOf('-fork') != -1 || network == 'test' || network == 'development') {
