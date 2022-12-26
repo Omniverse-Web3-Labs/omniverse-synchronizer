@@ -8,8 +8,8 @@
 	"BSCTEST": {
 		"nodeAddress": "https://bsc-testnet.public.blastapi.io",
 		"chainId": 97,
-		"omniverseProtocolAddress": "0xb28Fbbe8577f11cE200baEa3345ed5D7D39bbcf3",
-		"skywalkerFungibleAddress": "0xa60d0133b3c34c4aF4BE82Cf96073699810Bf945",
+		"omniverseProtocolAddress": "0x2530FBD1d25302ca62B918e3f817ff71c53394C6",
+		"skywalkerFungibleAddress": "0x4aA1d4b2Cc740D574FD833Ae04F261abd3970087",
 		"coolingDown": 10,
 		"omniverseChainId": 1
 	},
@@ -23,8 +23,8 @@
 	"PLATONEVMDEV": {
 		"nodeAddress": "https://devnet2openapi.platon.network/rpc",
 		"chainId": 2206132,
-		"omniverseProtocolAddress": "0xb28Fbbe8577f11cE200baEa3345ed5D7D39bbcf3",
-		"skywalkerFungibleAddress": "0xa60d0133b3c34c4aF4BE82Cf96073699810Bf945",
+		"omniverseProtocolAddress": "0xEE06D467E636FE205FDfb4a9A0FAD999bADCafda",
+		"skywalkerFungibleAddress": "0x17F4be3cb15AaA815FC50B0FfF84037122D62d89",
 		"coolingDown": 10,
 		"omniverseChainId": 3
 	},
@@ -38,7 +38,8 @@
 	},
 	"development": {
 		"omniverseProtocolAddress": "0x7a181d37207D93D0703B51c8d19d57989cDFC39c",
-		"skywalkerFungibleAddress": "0xCeE460f7D2b2444353bBc6158067126b0c9459FA"
+		"skywalkerFungibleAddress": "0xCeE460f7D2b2444353bBc6158067126b0c9459FA",
+		"omniverseChainId": 0
 	},
 	"PLATONEVM": {
 		"nodeAddress": "https://openapi.platon.network/rpc",

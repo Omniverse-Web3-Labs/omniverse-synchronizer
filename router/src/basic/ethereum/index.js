@@ -9,7 +9,7 @@ const logger = require('../../utils/logger.js');
 
 const OMNIVERSE_TOKEN_TRANSFER = 'OmniverseTokenTransfer';
 const OMNIVERSE_TOKEN_APPROVAL = 'OmniverseTokenApproval';
-const OMNIVERSE_TOKEN_TRANSFER_FROM = 'OmniverseTokenTransferFrom';
+const OMNIVERSE_TOKEN_DEPOSIT = 'OmniverseTokenDeposit';
 const OMNIVERSE_TOKEN_EXCEED_BALANCE = 'OmniverseTokenExceedBalance';
 const OMNIVERSE_TOKEN_WRONG_OP = 'OmniverseTokenWrongOp';
 const OMNIVERSE_NOT_OWNER = 'OmniverseNotOwner';
@@ -48,9 +48,9 @@ class EthereumHandler {
         this.eventOmniverseTokenApproval = skywalkerFungibleAbi[i];
         this.eventOmniverseTokenApproval.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenApproval);
       }
-      else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_TOKEN_TRANSFER_FROM) {
-        this.eventOmniverseTokenTransferFrom = skywalkerFungibleAbi[i];
-        this.eventOmniverseTokenTransferFrom.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenTransferFrom);
+      else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_TOKEN_DEPOSIT) {
+        this.eventOmniverseTokenDeposit = skywalkerFungibleAbi[i];
+        this.eventOmniverseTokenDeposit.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenDeposit);
       }
       else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_TOKEN_EXCEED_BALANCE) {
         this.eventOmniverseTokenExceedBalance = skywalkerFungibleAbi[i];
@@ -114,8 +114,8 @@ class EthereumHandler {
               logger.info(utils.format('Execute failed due to exceeding balance: {0} is needed from {1}, which only has {2}.',
                 decodedLog.value, decodedLog.owner, decodedLog.balance));
             }
-            else if (log.topics[0] == this.eventOmniverseTokenTransferFrom.signature) {
-              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenTransferFrom.inputs, log.data, log.topics.slice(1));
+            else if (log.topics[0] == this.eventOmniverseTokenDeposit.signature) {
+              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenDeposit.inputs, log.data, log.topics.slice(1));
               logger.info(utils.format('Execute OmniverseTransferFrom successfully: transfer {0} from {1} to {2}.',
                 decodedLog.value, decodedLog.from, decodedLog.to));
             }

@@ -148,7 +148,6 @@ contract('OmniverseProtocol', function() {
             it('should fail', async () => {
                 let nonce = await protocol.getTransactionCount(user1Pk) + 20;
                 let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
-                let aaa = await protocol.getRawData(txData);
                 await utils.expectThrow(protocol.verifyTransaction(txData), 'Nonce error');
             });
         });

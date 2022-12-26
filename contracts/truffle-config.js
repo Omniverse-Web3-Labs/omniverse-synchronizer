@@ -63,7 +63,7 @@ module.exports = {
     },
     // BSC testnet
     BSCTEST: {
-      provider: () => new HDWalletProvider(mnemonic, `https://data-seed-prebsc-1-s3.binance.org:8545`),
+      provider: () => new HDWalletProvider(mnemonic, `https://bsc-testnet.public.blastapi.io`),
       network_id: "*",       // Any network (default: none)
     },
     // BSC testnet
