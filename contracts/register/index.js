@@ -66,10 +66,23 @@ let signData = (hash, sk) => {
     return '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
 }
 
-let getRawData = (txData) => {
-    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(new BN(txData.chainId).toString('hex').padStart(2, '0'), 'hex'),
-        Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-    return bData;
+let getRawData = (txData, op, params) => {
+    let bData;
+    if (op == MINT) {
+        bData = Buffer.concat([Buffer.from(new BN(op).toString('hex').padStart(2, '0'), 'hex'), Buffer.from(params[0].slice(2), 'hex'), Buffer.from(new BN(params[1]).toString('hex').padStart(32, '0'), 'hex')]);
+    }
+    else if (op == TRANSFER) {
+        bData = Buffer.concat([Buffer.from(new BN(op).toString('hex').padStart(2, '0'), 'hex'), Buffer.from(params[0].slice(2), 'hex'), Buffer.from(new BN(params[1]).toString('hex').padStart(32, '0'), 'hex')]);
+    }
+    else if (op == WITHDRAW) {
+        bData = Buffer.concat([Buffer.from(new BN(op).toString('hex').padStart(2, '0'), 'hex'), Buffer.from(new BN(params[0]).toString('hex').padStart(32, '0'), 'hex')]);
+    }
+    else if (op == DEPOSIT) {
+        bData = Buffer.concat([Buffer.from(new BN(op).toString('hex').padStart(2, '0'), 'hex'), Buffer.from(params[0].slice(2), 'hex'), Buffer.from(new BN(params[1]).toString('hex').padStart(32, '0'), 'hex')]);
+    }
+    let ret = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(new BN(txData.chainId).toString('hex').padStart(2, '0'), 'hex'),
+        Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), bData]);
+    return ret;
 }
 
 async function initialize(committee, members) {
@@ -91,7 +104,7 @@ async function mint(to, amount) {
         to: TOKEN_ID,
         data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [MINT, transferData]),
     };
-    let bData = getRawData(txData);
+    let bData = getRawData(txData, MINT, [to, amount]);
     let hash = keccak256(bData);
     txData.signature = signData(hash, privateKeyBuffer);
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'omniverseTransfer', testAccountPrivateKey, [txData]);
@@ -107,7 +120,7 @@ async function transfer(to, amount) {
         to: TOKEN_ID,
         data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER, transferData]),
     };
-    let bData = getRawData(txData);
+    let bData = getRawData(txData, TRANSFER, [to, amount]);
     let hash = keccak256(bData);
     txData.signature = signData(hash, privateKeyBuffer);
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'omniverseTransfer', testAccountPrivateKey, [txData]);
@@ -123,7 +136,7 @@ async function withdraw(amount) {
         to: TOKEN_ID,
         data: web3.eth.abi.encodeParameters(['uint8', 'bytes'], [WITHDRAW, transferData]),
     };
-    let bData = getRawData(txData);
+    let bData = getRawData(txData, WITHDRAW, [amount]);
     let hash = keccak256(bData);
     txData.signature = signData(hash, privateKeyBuffer);
     await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'omniverseTransfer', testAccountPrivateKey, [txData]);
