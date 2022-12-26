@@ -6,9 +6,10 @@ const ethereum = require('./ethereum.js');
 const fs = require('fs');
 const utils = require('../../utils/utils.js');
 const logger = require('../../utils/logger.js');
+const globalDefine = require('../../utils/globalDefine.js');
 
 const OMNIVERSE_TOKEN_TRANSFER = 'OmniverseTokenTransfer';
-const OMNIVERSE_TOKEN_APPROVAL = 'OmniverseTokenApproval';
+const OMNIVERSE_TOKEN_WITHDRAW = 'OmniverseTokenWithdraw';
 const OMNIVERSE_TOKEN_DEPOSIT = 'OmniverseTokenDeposit';
 const OMNIVERSE_TOKEN_EXCEED_BALANCE = 'OmniverseTokenExceedBalance';
 const OMNIVERSE_TOKEN_WRONG_OP = 'OmniverseTokenWrongOp';
@@ -44,7 +45,7 @@ class EthereumHandler {
         this.eventOmniverseTokenTransfer = skywalkerFungibleAbi[i];
         this.eventOmniverseTokenTransfer.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenTransfer);
       }
-      else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_TOKEN_APPROVAL) {
+      else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_TOKEN_WITHDRAW) {
         this.eventOmniverseTokenApproval = skywalkerFungibleAbi[i];
         this.eventOmniverseTokenApproval.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenApproval);
       }
@@ -72,8 +73,24 @@ class EthereumHandler {
   }
 
   async addMessageToList(message) {
-    // to be continued, encoding is needed here for omniverse
-    this.messages.push(message);
+    let opData;
+    if (message.data.op == globalDefine.TokenOpType.TRANSFER) {
+      let data = this.web3.eth.abi.encodeParameters(['bytes', 'uint256'], [message.data.to, message.data.amount]);
+      opData = this.web3.eth.abi.encodeParameters(['uint8', 'bytes'], [message.data.op, data]);
+    }
+    else if (message.data.op == globalDefine.TokenOpType.MINT) {
+      let data = this.web3.eth.abi.encodeParameters(['bytes', 'uint256'], [message.data.to, message.data.amount]);
+      opData = this.web3.eth.abi.encodeParameters(['uint8', 'bytes'], [message.data.op, data]);
+    }
+
+    this.messages.push({
+      nonce: message.nonce,
+      from: message.from,
+      to: message.to,
+      chainId: message.chainId,
+      data: opData,
+      signature: message.signature,
+    });
   }
 
   async pushMessages() {
@@ -138,6 +155,24 @@ class EthereumHandler {
     }
   }
 
+  generalizeData(data) {
+    let ret = {};
+    let opData = this.web3.eth.abi.decodeParameters(['uint8', 'bytes'], data);
+    ret.op = opData[0];
+    if (ret.op == globalDefine.TokenOpType.TRANSFER) {
+      let transferData = this.web3.eth.abi.decodeParameters(['bytes', 'uint256'], opData[1]);
+      ret.to = transferData[0];
+      ret.amount = transferData[1];
+    }
+    else if (ret.op == globalDefine.TokenOpType.MINT) {
+      let mintData = this.web3.eth.abi.decodeParameters(['bytes', 'uint256'], opData[1]);
+      ret.to = mintData[0];
+      ret.amount = mintData[1];
+    }
+
+    return ret;
+  }
+
   async start(callback) {
     this.omniverseProtocolContract.events.TransactionSent()
     .on("connected", (subscriptionId) => {
@@ -148,7 +183,16 @@ class EthereumHandler {
       // to be continued, decoding is needed here for omniverse
       let message = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
-      callback(message.txData, members);
+      let data = this.generalizeData(message.txData.data);
+      let m = {
+        nonce: message.txData.nonce,
+        chainId: message.txData.chainId,
+        from: message.txData.from,
+        to: message.txData.to,
+        data: data,
+        signature: message.txData.signature,
+      }
+      callback(m, members);
     })
     .on('changed', (event) => {
       // remove event from local database

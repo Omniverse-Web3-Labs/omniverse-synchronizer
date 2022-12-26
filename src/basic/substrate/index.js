@@ -6,6 +6,23 @@ const substrate = require('./substrate.js');
 const fs = require('fs');
 const utils = require('../../utils/utils.js');
 const logger = require('../../utils/logger.js');
+const globalDefine = require('../../utils/globalDefine.js');
+const { bool, _void, str, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Enum, Struct, Vector, Option, Bytes } = require('scale-ts');
+
+const TokenOpcode = Struct({
+  op: u8,
+  data: Vector(u8),
+});
+
+const MintTokenOp = Struct({
+  to: Bytes(64),
+  amount: u128,
+});
+
+const TransferTokenOp = Struct({
+  to: Bytes(64),
+  amount: u128,
+});
 
 class SubstrateHandler {
   constructor(chainName) {
@@ -34,8 +51,36 @@ class SubstrateHandler {
   }
 
   async addMessageToList(message) {
-    // to be continued, encoding is needed here for omniverse
-    this.messages.push(message);
+    let opData;
+    if (message.data.op == globalDefine.TokenOpType.TRANSFER) {
+      let data = TransferTokenOp.enc({
+        to: new Uint8Array(Buffer.from(message.data.to)),
+        amount: BigInt(message.data.amount)
+      });
+      opData = TokenOpcode.enc({
+        op: message.data.op,
+        data: Array.from(data)
+      });
+    }
+    else if (message.data.op == globalDefine.TokenOpType.MINT) {
+      let data = MintTokenOp.enc({
+        to: new Uint8Array(Buffer.from(message.data.to)),
+        amount: BigInt(message.data.amount)
+      });
+      opData = TokenOpcode.enc({
+        op: message.data.op,
+        data: Array.from(data)
+      });
+    }
+
+    this.messages.push({
+      nonce: message.nonce,
+      from: message.from,
+      to: message.to,
+      chainId: message.chainId,
+      data: utils.toHexString(Array.from(opData)),
+      signature: message.signature,
+    });
   }
 
   async pushMessages() {
@@ -71,12 +116,40 @@ class SubstrateHandler {
                 });
                 console.log(event.data[0], event.data[1]);
                 let message = await substrate.contractCall(this.api, 'omniverseProtocol', 'transactionRecorder', [event.data[0].toHuman(), event.data[1].toHuman()]);
-                let tokenInfo = await substrate.contractCall(this.api, 'omniverseFactory', 'tokensInfo', ['0x01']);
+                let tokenInfo = await substrate.contractCall(this.api, 'omniverseFactory', 'tokensInfo', ['hh']);
                 console.log('message', message.unwrap(), tokenInfo.unwrap());
-                callback(message.unwrap().txData.toHuman(), tokenInfo.unwrap().members.toHuman());
+                let m = message.unwrap().txData.toHuman();
+                let data = this.generalizeData(m.data);
+                m.data = data;
+                callback(m, utils.toByteArray(tokenInfo.unwrap().members.toHuman()));
             }
         });
     });
+  }
+
+  /*
+  ret: {
+    op: number,
+    to: array,
+    amount: big int
+  }
+  */
+  generalizeData(data) {
+    let ret = {};
+    let tokenOp = TokenOpcode.dec(data);
+    ret.op = tokenOp.op;
+    if (tokenOp.op == globalDefine.TokenOpType.MINT) {
+      let mintOp = MintTokenOp.dec(new Uint8Array(tokenOp.data));
+      ret.to = Array.from(mintOp.to);
+      ret.amount = mintOp.amount;
+    }
+    else if (tokenOp.op == globalDefine.TokenOpType.TRANSFER) {
+      let transferOp = MintTokenOp.dec(tokenOp.data);
+      ret.to = Array.from(transferOp.to);
+      ret.amount = transferOp.amount;
+    }
+
+    return ret;
   }
 
   async start(callback) {
