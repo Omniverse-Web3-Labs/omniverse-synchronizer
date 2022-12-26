@@ -26,9 +26,9 @@ class chainHandlerMgr {
         return this.chainHandlers[name_];
     }
 
-    run() {
+    async run() {
         for (let i in this.chainHandlers) {
-            this.chainHandlers[i].start((message, members) => {
+            await this.chainHandlers[i].start((message, members) => {
                 for (let j in members) {
                     if (i != members[j]) {
                         this.chainHandlers[members[j]].addMessageToList(message);

@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@polkadot/api": "^9.10.4",
     "config": "^3.3.8",
     "log4js": "^6.7.0",
     "web3": "^1.8.0"
