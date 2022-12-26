@@ -5,9 +5,11 @@
 		"chainId": 43113
 	},
 	"BSCTEST": {
-		"nodeAddress": "https://data-seed-prebsc-1-s1.binance.org:8545",
-		"omniverseProtocolAddress": "0x5950b420377Ac8128485D54307762FC952e14CD4",
-		"chainId": 97
+		"nodeAddress": "https://bsc-testnet.public.blastapi.io",
+		"chainId": 97,
+		"omniverseProtocolAddress": "0x708F747447fb8cf865E78B2A280DDc06c3d1a00d",
+		"skywalkerFungibleAddress": "0xD60D16135e7082218617078D5Fed6b2e96694D8a",
+		"coolingDown": 10
 	},
 	"RINKEBY": {
 		"nodeAddress": "https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
@@ -16,16 +18,18 @@
 		"skywalkerFungibleAddress": "0x63b66c0a293812bcC0F7aE470f577608511BD524"
 	},
 	"PLATONEVMDEV": {
-		"nodeAddress": "https://devnetopenapi2.platon.network/rpc",
-		"chainId": 2203181,
-		"omniverseProtocolAddress": "0x61513E609832E29393cC35229ad28839DCf34870",
-		"skywalkerFungibleAddress": "0x950a980AE663A7B187Db806D5C7D4d7dabe7aAF4",
+		"nodeAddress": "https://devnet2openapi.platon.network/rpc",
+		"chainId": 2206132,
+		"omniverseProtocolAddress": "0x82826BcDaE5347A27Ddd039135c1E1513f5d7b9a",
+		"skywalkerFungibleAddress": "0x260cFCf8c73a384ba4662672be46E9a897550F1A",
 		"coolingDown": 10
 	},
 	"MOONBASEALPHA": {
 		"nodeAddress": "https://rpc.api.moonbase.moonbeam.network",
-		"omniverseProtocolAddress": "0x197D00ff70372A48c10cAe8205680c9a9f5F8370",
-		"chainId": 1287
+		"omniverseProtocolAddress": "0x886f8EE4fE3e51a74f635CB591E130a02cE90307",
+		"chainId": 1287,
+		"skywalkerFungibleAddress": "0xb63dbC419c54FEf87Da89C1bd2d398334956bD8d",
+		"coolingDown": 10
 	},
 	"development": {
 		"omniverseProtocolAddress": "0x7a181d37207D93D0703B51c8d19d57989cDFC39c",
