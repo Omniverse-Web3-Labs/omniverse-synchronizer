@@ -81,7 +81,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev See IOmniverseProtocl
      */
-    function getTransactionCount(bytes memory _pk) external view returns (uint256) {
+    function getTransactionCount(bytes memory _pk) external view override returns (uint256) {
         return transactionRecorder[_pk].txList.length;
     }
 
@@ -98,7 +98,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      *
      */
-    function getCoolingDownTime() external view returns (uint256) {
+    function getCoolingDownTime() external view override returns (uint256) {
         return cdTime;
     }
 
@@ -150,7 +150,7 @@ contract OmniverseProtocol is IOmniverseProtocol {
     /**
      * @dev See IOmniverseProtocl
      */
-    function isMalicious(bytes memory _pk) external view returns (bool) {
+    function isMalicious(bytes memory _pk) external view override returns (bool) {
         RecordedCertificate storage rc = transactionRecorder[_pk];
         return (rc.evilTxList.length > 0);
     }
