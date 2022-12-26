@@ -12,16 +12,16 @@
     //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
     //   "compatibleChain": "ethereum"
     // },
-    "BSCTEST": {
-      "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
-      "chainId": 97,
-      "omniverseProtocolContractAddress": "0x2530FBD1d25302ca62B918e3f817ff71c53394C6",
-      "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
-      "skywalkerFungibleContractAddress": "0x4aA1d4b2Cc740D574FD833Ae04F261abd3970087",
-      "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
-      "compatibleChain": "ethereum",
-      "omniverseChainId": 1
-    },
+    // "BSCTEST": {
+    //   "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
+    //   "chainId": 97,
+    //   "omniverseProtocolContractAddress": "0x2530FBD1d25302ca62B918e3f817ff71c53394C6",
+    //   "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
+    //   "skywalkerFungibleContractAddress": "0x4aA1d4b2Cc740D574FD833Ae04F261abd3970087",
+    //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
+    //   "compatibleChain": "ethereum",
+    //   "omniverseChainId": 1
+    // },
     // "MOONBASEALPHA": {
     //   "nodeAddress": "wss://moonbeam-alpha.api.onfinality.io/public-ws",
     //   "chainId": 1287,
@@ -31,14 +31,10 @@
     //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
     //   "compatibleChain": "ethereum"
     // },
-    // "SUBSTRATE": {
-    //   "nodeAddress": "ws://127.0.0.1:9944",
-    //   "chainId": 1287,
-    //   "omniverseProtocolContractAddress": "0x00895B049b8BEe629FF5CB76f7DE92596E047972",
-    //   "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
-    //   "skywalkerFungibleContractAddress": "0xBFee24f1fCF9c1Bfb7C788efC9ef6D1F2dBf5BFF",
-    //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
-    //   "compatibleChain": "ethereum"
-    // }
+    "SUBSTRATE": {
+      "nodeAddress": "ws://127.0.0.1:9944",
+      "compatibleChain": "substrate",
+      "omniverseChainId": 1
+    }
   }
 }

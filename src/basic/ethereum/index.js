@@ -138,7 +138,7 @@ class EthereumHandler {
     }
   }
 
-  start(callback) {
+  async start(callback) {
     this.omniverseProtocolContract.events.TransactionSent()
     .on("connected", (subscriptionId) => {
       logger.info('connected', subscriptionId);
