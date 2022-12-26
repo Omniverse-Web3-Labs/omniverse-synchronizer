@@ -117,8 +117,161 @@ contract OmniverseProtocol is IOmniverseProtocol {
      * @dev Get the hash of a tx
      */
     function _getTransactionHash(OmniverseTokenProtocol memory _data) internal pure returns (bytes32) {
-        bytes memory rawData = abi.encodePacked(uint128(_data.nonce), _data.chainId, _data.from, _data.to, _data.data);
+        bytes memory bData;
+        for (uint256 i = 0; i < _data.data.items.length; i++) {
+            bData = bytes.concat(bData, _getPayloadItemRawData(_data.data.items[i]));
+        }
+        bytes memory rawData = abi.encodePacked(uint128(_data.nonce), _data.chainId, _data.from, _data.to, bData);
         return keccak256(rawData);
+    }
+
+    function getRawData(OmniverseTokenProtocol memory _data) external pure returns (bytes memory) {
+        bytes memory bData;
+        for (uint256 i = 0; i < _data.data.items.length; i++) {
+            bData = bytes.concat(bData, _getPayloadItemRawData(_data.data.items[i]));
+        }
+        bytes memory rawData = abi.encodePacked(uint128(_data.nonce), _data.chainId, _data.from, _data.to, bData);
+        return rawData;
+    }
+
+    function _getPayloadItemRawData(PayloadItem memory item) public pure returns (bytes memory ret) {
+        if (item.msgType == MsgType.EvmString) {
+            (string memory r) = abi.decode(item.value, (string));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmU8) {
+            (uint8 r) = abi.decode(item.value, (uint8));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmU16) {
+            (uint16 r) = abi.decode(item.value, (uint16));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmU32) {
+            (uint32 r) = abi.decode(item.value, (uint32));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmU64) {
+            (uint64 r) = abi.decode(item.value, (uint64));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmU128) {
+            (uint128 r) = abi.decode(item.value, (uint128));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmI8) {
+            (int8 r) = abi.decode(item.value, (int8));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmI16) {
+            (int16 r) = abi.decode(item.value, (int16));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmI32) {
+            (int32 r) = abi.decode(item.value, (int32));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmI64) {
+            (int64 r) = abi.decode(item.value, (int64));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmI128) {
+            (int128 r) = abi.decode(item.value, (int128));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmStringArray) {
+            (string[] memory r) = abi.decode(item.value, (string[]));
+            bytes memory sb;
+            for (uint256 i = 0; i < r.length; i++) {
+                sb = bytes.concat(sb, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, sb);
+        }
+        else if (item.msgType == MsgType.Bytes) {
+            (bytes memory r) = abi.decode(item.value, (bytes));
+            ret = abi.encodePacked(item.name, r);
+        }
+        else if (item.msgType == MsgType.EvmU16Array) {
+            (uint16[] memory r) = abi.decode(item.value, (uint16[]));
+            
+            bytes memory b;
+            for (uint256 i = 0; i < r.length; i++) {
+                b = bytes.concat(b, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, b);
+        }
+        else if (item.msgType == MsgType.EvmU32Array) {
+            (uint32[] memory r) = abi.decode(item.value, (uint32[]));
+            
+            bytes memory b;
+            for (uint256 i = 0; i < r.length; i++) {
+                b = bytes.concat(b, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, b);
+        }
+        else if (item.msgType == MsgType.EvmU64Array) {
+            (uint64[] memory r) = abi.decode(item.value, (uint64[]));
+            
+            bytes memory b;
+            for (uint256 i = 0; i < r.length; i++) {
+                b = bytes.concat(b, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, b);
+        }
+        else if (item.msgType == MsgType.EvmU128Array) {
+            (uint128[] memory r) = abi.decode(item.value, (uint128[]));
+            
+            bytes memory b;
+            for (uint256 i = 0; i < r.length; i++) {
+                b = bytes.concat(b, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, b);
+        }
+        else if (item.msgType == MsgType.EvmI8Array) {
+            (int8[] memory r) = abi.decode(item.value, (int8[]));
+            
+            bytes memory b;
+            for (uint256 i = 0; i < r.length; i++) {
+                b = bytes.concat(b, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, b);
+        }
+        else if (item.msgType == MsgType.EvmI16Array) {
+            (int16[] memory r) = abi.decode(item.value, (int16[]));
+            
+            bytes memory b;
+            for (uint256 i = 0; i < r.length; i++) {
+                b = bytes.concat(b, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, b);
+        }
+        else if (item.msgType == MsgType.EvmI32Array) {
+            (int32[] memory r) = abi.decode(item.value, (int32[]));
+            
+            bytes memory b;
+            for (uint256 i = 0; i < r.length; i++) {
+                b = bytes.concat(b, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, b);
+        }
+        else if (item.msgType == MsgType.EvmI64Array) {
+            (int64[] memory r) = abi.decode(item.value, (int64[]));
+            
+            bytes memory b;
+            for (uint256 i = 0; i < r.length; i++) {
+                b = bytes.concat(b, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, b);
+        }
+        else if (item.msgType == MsgType.EvmI128Array) {
+            (int128[] memory r) = abi.decode(item.value, (int128[]));
+            
+            bytes memory b;
+            for (uint256 i = 0; i < r.length; i++) {
+                b = bytes.concat(b, abi.encodePacked(r[i]));
+            }
+            ret = abi.encodePacked(item.name, b);
+        }
     }
 
     /**

@@ -11,8 +11,44 @@ struct OmniverseTokenProtocol {
     uint8 chainId;
     bytes from;
     string to;
-    bytes data;
+    Payload data;
     bytes signature;
+}
+
+enum MsgType {
+    EvmString,
+    EvmU8,
+    EvmU16,
+    EvmU32,
+    EvmU64,
+    EvmU128,
+    EvmI8,
+    EvmI16,
+    EvmI32,
+    EvmI64,
+    EvmI128,
+    EvmStringArray,
+    Bytes,
+    EvmU16Array,
+    EvmU32Array,
+    EvmU64Array,
+    EvmU128Array,
+    EvmI8Array,
+    EvmI16Array,
+    EvmI32Array,
+    EvmI64Array,
+    EvmI128Array,
+    EvmAddress
+}
+
+struct PayloadItem {
+    string name;
+    MsgType msgType;
+    bytes value;
+}
+
+struct Payload {
+    PayloadItem[] items;
 }
 
 interface IOmniverseProtocol {

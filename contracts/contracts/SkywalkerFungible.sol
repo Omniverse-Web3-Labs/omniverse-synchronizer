@@ -93,17 +93,19 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         delayedTxs[0] = delayedTxs[delayedTxs.length - 1];
         delayedTxs.pop();
 
-        (uint8 op, bytes memory wrappedData) = abi.decode(txData.data, (uint8, bytes));
+        (uint8 op) = abi.decode(txData.data.items[0].value, (uint8));
         if (op == WITHDRAW) {
-            (uint256 amount) = abi.decode(wrappedData, (uint256));
+            (uint256 amount) = abi.decode(txData.data.items[1].value, (uint256));
             _omniverseWithdraw(txData.from, amount, txData.chainId == omniverseProtocol.getChainId());
         }
         else if (op == TRANSFER) {
-            (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
+            (bytes memory to) = abi.decode(txData.data.items[1].value, (bytes));
+            (uint256 amount) = abi.decode(txData.data.items[2].value, (uint256));
             _omniverseTransfer(txData.from, to, amount);
         }
         else if (op == DEPOSIT) {
-            (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
+            (bytes memory to) = abi.decode(txData.data.items[1].value, (bytes));
+            (uint256 amount) = abi.decode(txData.data.items[2].value, (uint256));
             _omniverseDeposit(txData.from, to, amount);
         }
         else if (op == MINT) {
@@ -112,7 +114,8 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
                 emit OmniverseNotOwner(txData.from);
                 return;
             }
-            (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
+            (bytes memory to) = abi.decode(txData.data.items[1].value, (bytes));
+            (uint256 amount) = abi.decode(txData.data.items[2].value, (uint256));
             _omniverseMint(to, amount);
         }
         else {
@@ -274,7 +277,23 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         p.from = committee;
         p.to = tokenIdentity;
         p.signature = signature;
-        p.data = abi.encode(DEPOSIT, abi.encode(request.receiver, request.amount));
+        
+        // payload
+        Payload memory data;
+        data.items = new PayloadItem[](3);
+        PayloadItem memory item0 = data.items[0];
+        item0.name = "op";
+        item0.msgType = MsgType.EvmU8;
+        item0.value = abi.encode(DEPOSIT);
+        PayloadItem memory item1 = data.items[1];
+        item1.name = "receiver";
+        item1.msgType = MsgType.Bytes;
+        item1.value = abi.encode(request.receiver);
+        PayloadItem memory item2 = data.items[2];
+        item2.name = "amount";
+        item2.msgType = MsgType.EvmU8;
+        item2.value = abi.encode(request.amount);
+        p.data = data;
         _omniverseTransaction(p);
     }
 
