@@ -117,7 +117,25 @@ contract OmniverseProtocol is IOmniverseProtocol {
      * @dev Get the hash of a tx
      */
     function _getTransactionHash(OmniverseTokenProtocol memory _data) internal pure returns (bytes32) {
-        bytes memory rawData = abi.encodePacked(uint128(_data.nonce), _data.chainId, _data.from, _data.to, _data.data);
+        bytes memory bData;
+        (uint8 op, bytes memory wrappedData) = abi.decode(_data.data, (uint8, bytes));
+        if (op == WITHDRAW) {
+            (uint256 amount) = abi.decode(wrappedData, (uint256));
+            bData = abi.encodePacked(op, uint128(amount));
+        }
+        else if (op == TRANSFER) {
+            (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
+            bData = abi.encodePacked(op, to, uint128(amount));
+        }
+        else if (op == DEPOSIT) {
+            (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
+            bData = abi.encodePacked(op, to, uint128(amount));
+        }
+        else if (op == MINT) {
+            (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
+            bData = abi.encodePacked(op, to, uint128(amount));
+        }
+        bytes memory rawData = abi.encodePacked(uint128(_data.nonce), _data.chainId, _data.from, _data.to, bData);
         return keccak256(rawData);
     }
 

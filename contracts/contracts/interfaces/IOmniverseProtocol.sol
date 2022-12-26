@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
+uint8 constant DEPOSIT = 0;
+uint8 constant TRANSFER = 1;
+uint8 constant WITHDRAW = 2;
+uint8 constant MINT = 3;
+
 enum VerifyResult {
     Success,
     Malicious

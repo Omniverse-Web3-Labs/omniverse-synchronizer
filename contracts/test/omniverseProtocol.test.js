@@ -21,6 +21,13 @@ const MINT = 3;
 
 const OmniverseProtocol = artifacts.require('./OmniverseProtocol.sol');
 const Locker = artifacts.require('./SkywalkerFungible.sol');
+OmniverseProtocol.defaults({
+    gas: 8000000,
+});
+Locker.defaults({
+    gas: 8000000,
+});
+
 OmniverseProtocol.numberFormat = 'String';
 Locker.numberFormat = 'String';
 
@@ -44,10 +51,23 @@ let signData = (hash, sk) => {
     return '0x' + Buffer.from(signature.signature).toString('hex') + (signature.recid == 0 ? '1b' : '1c');
 }
 
-let getRawData = (txData) => {
-    let bData = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(new BN(txData.chainId).toString('hex').padStart(2, '0'), 'hex'),
-        Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), Buffer.from(txData.data.slice(2), 'hex')]);
-    return bData;
+let getRawData = (txData, op, params) => {
+    let bData;
+    if (op == MINT) {
+        bData = Buffer.concat([Buffer.from(new BN(op).toString('hex').padStart(2, '0'), 'hex'), Buffer.from(params[0].slice(2), 'hex'), Buffer.from(new BN(params[1]).toString('hex').padStart(32, '0'), 'hex')]);
+    }
+    else if (op == TRANSFER) {
+        bData = Buffer.concat([Buffer.from(new BN(op).toString('hex').padStart(2, '0'), 'hex'), Buffer.from(params[0].slice(2), 'hex'), Buffer.from(new BN(params[1]).toString('hex').padStart(32, '0'), 'hex')]);
+    }
+    else if (op == WITHDRAW) {
+        bData = Buffer.concat([Buffer.from(new BN(op).toString('hex').padStart(2, '0'), 'hex'), Buffer.from(new BN(params[0]).toString('hex').padStart(32, '0'), 'hex')]);
+    }
+    else if (op == DEPOSIT) {
+        bData = Buffer.concat([Buffer.from(new BN(op).toString('hex').padStart(2, '0'), 'hex'), Buffer.from(params[0].slice(2), 'hex'), Buffer.from(new BN(params[1]).toString('hex').padStart(32, '0'), 'hex')]);
+    }
+    let ret = Buffer.concat([Buffer.from(new BN(txData.nonce).toString('hex').padStart(32, '0'), 'hex'), Buffer.from(new BN(txData.chainId).toString('hex').padStart(2, '0'), 'hex'),
+        Buffer.from(txData.from.slice(2), 'hex'), Buffer.from(txData.to), bData]);
+    return ret;
 }
 
 let encodeMint = (from, toPk, amount, nonce) => {
@@ -59,7 +79,7 @@ let encodeMint = (from, toPk, amount, nonce) => {
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [MINT, transferData]),
     }
-    let bData = getRawData(txData);
+    let bData = getRawData(txData, MINT, [toPk, amount]);
     let hash = keccak256(bData);
     txData.signature = signData(hash, from.sk);
     return txData;
@@ -74,7 +94,7 @@ let encodeTransfer = (from, toPk, amount, nonce) => {
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [TRANSFER, transferData]),
     }
-    let bData = getRawData(txData);
+    let bData = getRawData(txData, TRANSFER, [toPk, amount]);
     let hash = keccak256(bData);
     txData.signature = signData(hash, from.sk);
     return txData;
@@ -89,7 +109,7 @@ let encodeWithdraw = (from, amount, nonce, chainId) => {
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [WITHDRAW, transferData]),
     }
-    let bData = getRawData(txData);
+    let bData = getRawData(txData, WITHDRAW, [amount]);
     let hash = keccak256(bData);
     txData.signature = signData(hash, from.sk);
     return txData;
@@ -104,7 +124,7 @@ let encodeDeposit = (from, toPk, amount, nonce, chainId) => {
         to: TOKEN_ID,
         data: web3js.eth.abi.encodeParameters(['uint8', 'bytes'], [DEPOSIT, transferData]),
     }
-    let bData = getRawData(txData);
+    let bData = getRawData(txData, DEPOSIT, [toPk, amount]);
     let hash = keccak256(bData);
     txData.signature = signData(hash, from.sk);
     return txData;
@@ -239,7 +259,7 @@ contract('SkywalkerFungible', function() {
                 let nonce = await protocol.getTransactionCount(user1Pk);
                 let txData = encodeTransfer({pk: user1Pk, sk: user1Sk}, user2Pk, TEN_TOKEN, nonce);
                 txData.to = 'LandRover';
-                let bData = getRawData(txData);
+                let bData = getRawData(txData, TRANSFER, [user2Pk, TEN_TOKEN]);
                 let hash = keccak256(bData);
                 txData.signature = signData(hash, user1Sk);
                 await utils.expectThrow(locker.omniverseTransfer(txData), 'Wrong destination');
