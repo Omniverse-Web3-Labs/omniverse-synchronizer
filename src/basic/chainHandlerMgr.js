@@ -13,7 +13,7 @@ class chainHandlerMgr {
             let network = networks[i];
             let handler = require('./' + network['compatibleChain'] + '/index');
             let inst = new handler(i);
-            this.chainHandlers[i] = inst;
+            this.chainHandlers[network.omniverseChainId] = inst;
             await inst.init();
         }
     }
