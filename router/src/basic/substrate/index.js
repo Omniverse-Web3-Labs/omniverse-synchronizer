@@ -149,7 +149,7 @@ class SubstrateHandler {
       ret.amount = mintOp.amount;
     }
     else if (tokenOp.op == globalDefine.TokenOpType.TRANSFER) {
-      let transferOp = MintTokenOp.dec(tokenOp.data);
+      let transferOp = TransferTokenOp.dec(new Uint8Array(tokenOp.data));
       ret.to = Array.from(transferOp.to);
       ret.amount = transferOp.amount;
     }
