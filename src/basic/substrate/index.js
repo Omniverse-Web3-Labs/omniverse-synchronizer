@@ -117,7 +117,7 @@ class SubstrateHandler {
                 });
                 console.log(event.data[0], event.data[1]);
                 let message = await substrate.contractCall(this.api, 'omniverseProtocol', 'transactionRecorder', [event.data[0].toHuman(), event.data[1].toHuman()]);
-                let tokenInfo = await substrate.contractCall(this.api, 'omniverseFactory', 'tokensInfo', ['hh']);
+                let tokenInfo = await substrate.contractCall(this.api, 'omniverseFactory', 'tokensInfo', [this.tokenId]);
                 console.log('message', message.unwrap(), tokenInfo.unwrap());
                 let m = message.unwrap().txData.toHuman();
                 if (m.to != this.tokenId) {
