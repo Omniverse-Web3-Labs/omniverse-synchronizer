@@ -185,6 +185,7 @@ class EthereumHandler {
       let message = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
       if (message.txData.to != this.tokenId) {
         console.log('Another destination');
+        return;
       }
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
       let data = this.generalizeData(message.txData.data);

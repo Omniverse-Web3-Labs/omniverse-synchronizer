@@ -8,11 +8,11 @@
 	"BSCTEST": {
 		"nodeAddress": "https://bsc-testnet.public.blastapi.io",
 		"chainId": 97,
-		"omniverseProtocolAddress": "0xDb948F3E088c30889679472E000929e68c3ce473",
-		"skywalkerFungibleAddress": "0xf45FbC436E7E4Dce993f9248721d87D8BcF5Ed8C",
-		"skywalkerFungibleAddressY": "0xC66Dcfd836F59c02fAfF7149e6114B29bDF18a59",
+		"omniverseProtocolAddress": "0xdB9B0f4F6aFC13EaBBC9fa126662a1D77BAfdC98",
+		"skywalkerFungibleAddressX": "0x2fea6b82bAd2999C8Abb0C072363f86f2add5292",
+		"skywalkerFungibleAddress": "0x069c23c166Edff0398958C261D3968713B21139c",
 		"coolingDown": 10,
-		"omniverseChainId": 1
+		"omniverseChainId": 0
 	},
 	"RINKEBY": {
 		"nodeAddress": "https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",

@@ -227,12 +227,17 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
     function addMembers(uint8[] calldata _members) external onlyOwner {
         for (uint256 i = 0; i < _members.length; i++) {
+            bool found = false;
             for (uint256 j = 0; j < members.length; j++) {
                 if (members[j] == _members[i]) {
+                    found = true;
                     break;
                 }
             }
-            members.push(_members[i]);
+            
+            if (!found) {
+                members.push(_members[i]);
+            }
         }
     }
 
