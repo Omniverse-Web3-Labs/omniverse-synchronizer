@@ -39,6 +39,7 @@ class EthereumHandler {
     this.skywalkerFungibleContract = new this.web3.eth.Contract(skywalkerFungibleAbi, skywalkerFungibleContractAddress);
     this.chainId = config.get('networks.' + this.chainName + '.chainId');
     this.messages = [];
+    this.tokenId = config.get('tokenId');
 
     for (let i = 0; i < skywalkerFungibleAbi.length; i++) {
       if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_TOKEN_TRANSFER) {
@@ -182,6 +183,9 @@ class EthereumHandler {
       logger.debug('event', event);
       // to be continued, decoding is needed here for omniverse
       let message = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
+      if (message.txData.to != this.tokenId) {
+        console.log('Another destination');
+      }
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
       let data = this.generalizeData(message.txData.data);
       let m = {

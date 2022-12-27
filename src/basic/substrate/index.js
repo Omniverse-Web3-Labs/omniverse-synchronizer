@@ -34,6 +34,7 @@ class SubstrateHandler {
     this.network = config.get('networks.' + this.chainName);
     const wsProvider = new WsProvider(this.network.nodeAddress);
     this.api = await ApiPromise.create({ provider: wsProvider });
+    this.tokenId = config.get('tokenId');
     
     // key
     let secret = JSON.parse(fs.readFileSync(config.get('secret')));
@@ -119,6 +120,9 @@ class SubstrateHandler {
                 let tokenInfo = await substrate.contractCall(this.api, 'omniverseFactory', 'tokensInfo', ['hh']);
                 console.log('message', message.unwrap(), tokenInfo.unwrap());
                 let m = message.unwrap().txData.toHuman();
+                if (m.to != this.tokenId) {
+                  console.log('Another destination');
+                }
                 let data = this.generalizeData(m.data);
                 m.data = data;
                 callback(m, utils.toByteArray(tokenInfo.unwrap().members.toHuman()));
