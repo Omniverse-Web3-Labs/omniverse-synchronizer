@@ -3,8 +3,9 @@
 ## Command line tool
 ### Install
 
-```
-cd contracts
+* Get into this repo `./` first.
+* Install node environment. 
+```sh
 npm install
 ```
 
