@@ -87,7 +87,7 @@ class SubstrateHandler {
   async pushMessages() {
     for (let i = 0; i < this.messages.length; i++) {
       await substrate.sendTransaction(this.api, 'omniverseFactory', 'sendTransaction',
-      this.sender, [this.messages[i]]);
+      this.sender, [this.tokenId, this.messages[i]]);
     }
     this.messages = [];
   }
@@ -122,6 +122,7 @@ class SubstrateHandler {
                 let m = message.unwrap().txData.toHuman();
                 if (m.to != this.tokenId) {
                   console.log('Another destination');
+                  return;
                 }
                 let data = this.generalizeData(m.data);
                 m.data = data;
