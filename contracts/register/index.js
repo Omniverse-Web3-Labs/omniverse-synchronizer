@@ -9,7 +9,7 @@ const eccrypto = require('eccrypto');
 const keccak256 = require('keccak256');
 const secp256k1 = require('secp256k1');
 
-const TOKEN_ID = 'Skywalker';
+const TOKEN_ID = 'X';
 
 const DEPOSIT = 0;
 const TRANSFER = 1;
