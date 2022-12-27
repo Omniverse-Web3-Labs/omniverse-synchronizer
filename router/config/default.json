@@ -2,6 +2,7 @@
   "scanInterval": 10,
   "logLevel": "debug",
   "secret": "config/.secret",
+  "tokenId": "X",
   "networks": {
     // "PLATONEVMDEV": {
     //   "nodeAddress": "wss://devnet2openapi.platon.network/ws",
@@ -12,16 +13,16 @@
     //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
     //   "compatibleChain": "ethereum"
     // },
-    // "BSCTEST": {
-    //   "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
-    //   "chainId": 97,
-    //   "omniverseProtocolContractAddress": "0x2530FBD1d25302ca62B918e3f817ff71c53394C6",
-    //   "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
-    //   "skywalkerFungibleContractAddress": "0x4aA1d4b2Cc740D574FD833Ae04F261abd3970087",
-    //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
-    //   "compatibleChain": "ethereum",
-    //   "omniverseChainId": 1
-    // },
+    "BSCTEST": {
+      "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
+      "chainId": 97,
+      "omniverseProtocolContractAddress": "0xDb948F3E088c30889679472E000929e68c3ce473",
+      "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
+      "skywalkerFungibleContractAddress": "0xf45FbC436E7E4Dce993f9248721d87D8BcF5Ed8C",
+      "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
+      "compatibleChain": "ethereum",
+      "omniverseChainId": 0
+    },
     // "MOONBASEALPHA": {
     //   "nodeAddress": "wss://moonbeam-alpha.api.onfinality.io/public-ws",
     //   "chainId": 1287,
