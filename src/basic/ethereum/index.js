@@ -103,55 +103,50 @@ class EthereumHandler {
   }
 
   async tryTrigger() {
-    while (true) {
-      let ret = await ethereum.contractCall(this.skywalkerFungibleContract, 'getExecutableDelayedTx', []);
-      if (ret.sender != '0x') {
-        logger.debug('Delayed transaction', ret);
-        let receipt = await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'triggerExecution',
-          this.testAccountPrivateKey, []);
-        logger.debug(receipt.logs[0].topics, receipt.logs[0].data);
-        for (let i = 0; i < receipt.logs.length; i++) {
-          let log = receipt.logs[i];
-          if (log.address == this.skywalkerFungibleContract._address) {
-            if (log.topics[0] == this.eventOmniverseError.signature) {
-              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseError.inputs, log.data, log.topics.slice(1));
-              logger.info(utils.format('Execute failed: sent by {0}, the reason is {1}.',
-                decodedLog.sender, decodedLog.reason));
-            }
-            else if (log.topics[0] == this.eventOmniverseNotOwner.signature) {
-              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseNotOwner.inputs, log.data, log.topics.slice(1));
-              logger.info(utils.format('Execute failed due to not owner: sent by {0}.', decodedLog.sender));
-            }
-            else if (log.topics[0] == this.eventOmniverseNotOwner.signature) {
-              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseNotOwner.inputs, log.data, log.topics.slice(1));
-              logger.info(utils.format('Execute failed due to wrong Op: sent by {0}, the op code is {1}.',
-                decodedLog.sender, decodedLog.op));
-            }
-            else if (log.topics[0] == this.eventOmniverseTokenExceedBalance.signature) {
-              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenExceedBalance.inputs, log.data, log.topics.slice(1));
-              logger.info(utils.format('Execute failed due to exceeding balance: {0} is needed from {1}, which only has {2}.',
-                decodedLog.value, decodedLog.owner, decodedLog.balance));
-            }
-            else if (log.topics[0] == this.eventOmniverseTokenDeposit.signature) {
-              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenDeposit.inputs, log.data, log.topics.slice(1));
-              logger.info(utils.format('Execute OmniverseTransferFrom successfully: transfer {0} from {1} to {2}.',
-                decodedLog.value, decodedLog.from, decodedLog.to));
-            }
-            else if (log.topics[0] == this.eventOmniverseTokenApproval.signature) {
-              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenApproval.inputs, log.data, log.topics.slice(1));
-              logger.info(utils.format('Execute OmniverseApprove successfully: {0} approve {1} for {2}.',
-                decodedLog.owner, decodedLog.spender, decodedLog.value));
-            }
-            else if (log.topics[0] == this.eventOmniverseTokenTransfer.signature) {
-              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenTransfer.inputs, log.data, log.topics.slice(1));
-              logger.info(utils.format('Execute OmniverseTransfer successfully: {0} transfer {1} to {2}.',
-                decodedLog.from, decodedLog.value, decodedLog.to));
-            }
+    let ret = await ethereum.contractCall(this.skywalkerFungibleContract, 'getExecutableDelayedTx', []);
+    if (ret.sender != '0x') {
+      logger.debug('Delayed transaction', ret);
+      let receipt = await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'triggerExecution',
+        this.testAccountPrivateKey, []);
+      logger.debug(receipt.logs[0].topics, receipt.logs[0].data);
+      for (let i = 0; i < receipt.logs.length; i++) {
+        let log = receipt.logs[i];
+        if (log.address == this.skywalkerFungibleContract._address) {
+          if (log.topics[0] == this.eventOmniverseError.signature) {
+            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseError.inputs, log.data, log.topics.slice(1));
+            logger.info(utils.format('Execute failed: sent by {0}, the reason is {1}.',
+              decodedLog.sender, decodedLog.reason));
+          }
+          else if (log.topics[0] == this.eventOmniverseNotOwner.signature) {
+            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseNotOwner.inputs, log.data, log.topics.slice(1));
+            logger.info(utils.format('Execute failed due to not owner: sent by {0}.', decodedLog.sender));
+          }
+          else if (log.topics[0] == this.eventOmniverseNotOwner.signature) {
+            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseNotOwner.inputs, log.data, log.topics.slice(1));
+            logger.info(utils.format('Execute failed due to wrong Op: sent by {0}, the op code is {1}.',
+              decodedLog.sender, decodedLog.op));
+          }
+          else if (log.topics[0] == this.eventOmniverseTokenExceedBalance.signature) {
+            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenExceedBalance.inputs, log.data, log.topics.slice(1));
+            logger.info(utils.format('Execute failed due to exceeding balance: {0} is needed from {1}, which only has {2}.',
+              decodedLog.value, decodedLog.owner, decodedLog.balance));
+          }
+          else if (log.topics[0] == this.eventOmniverseTokenDeposit.signature) {
+            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenDeposit.inputs, log.data, log.topics.slice(1));
+            logger.info(utils.format('Execute OmniverseTransferFrom successfully: transfer {0} from {1} to {2}.',
+              decodedLog.value, decodedLog.from, decodedLog.to));
+          }
+          else if (log.topics[0] == this.eventOmniverseTokenApproval.signature) {
+            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenApproval.inputs, log.data, log.topics.slice(1));
+            logger.info(utils.format('Execute OmniverseApprove successfully: {0} approve {1} for {2}.',
+              decodedLog.owner, decodedLog.spender, decodedLog.value));
+          }
+          else if (log.topics[0] == this.eventOmniverseTokenTransfer.signature) {
+            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenTransfer.inputs, log.data, log.topics.slice(1));
+            logger.info(utils.format('Execute OmniverseTransfer successfully: {0} transfer {1} to {2}.',
+              decodedLog.from, decodedLog.value, decodedLog.to));
           }
         }
-      }
-      else {
-        break;
       }
     }
   }
