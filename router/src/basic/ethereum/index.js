@@ -157,12 +157,12 @@ class EthereumHandler {
     ret.op = opData[0];
     if (ret.op == globalDefine.TokenOpType.TRANSFER) {
       let transferData = this.web3.eth.abi.decodeParameters(['bytes', 'uint256'], opData[1]);
-      ret.to = transferData[0];
+      ret.to = utils.toByteArray(transferData[0]);
       ret.amount = transferData[1];
     }
     else if (ret.op == globalDefine.TokenOpType.MINT) {
       let mintData = this.web3.eth.abi.decodeParameters(['bytes', 'uint256'], opData[1]);
-      ret.to = mintData[0];
+      ret.to = utils.toByteArray(mintData[0]);
       ret.amount = mintData[1];
     }
 
