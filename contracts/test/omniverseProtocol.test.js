@@ -446,7 +446,7 @@ contract('SkywalkerFungible', function() {
                 assert(ret.logs[0].event == 'OmniverseTokenWithdraw');
                 let balance = await locker.omniverseBalanceOf(user1Pk);
                 assert('0' == balance, 'Balance should be zero');
-                balance = await locker.balanceOf(user1);
+                balance = await locker.nativeBalanceOf(user1);
                 assert(ONE_TOKEN == balance, 'Balance should be one');
             });
         });
@@ -467,7 +467,7 @@ contract('SkywalkerFungible', function() {
                 assert(ret.logs[0].event == 'OmniverseTokenWithdraw');
                 let balance = await locker.omniverseBalanceOf(user1Pk);
                 assert('0' == balance, 'Balance should be zero');
-                balance = await locker.balanceOf(user1);
+                balance = await locker.nativeBalanceOf(user1);
                 assert('0' == balance, 'Balance should be zero');
             });
         });
@@ -505,7 +505,7 @@ contract('SkywalkerFungible', function() {
                 let request = await locker.getDepositRequest(index);
                 assert(request.receiver == user1Pk);
                 assert(request.amount == ONE_TOKEN);
-                let balance = await locker.balanceOf(user1);
+                let balance = await locker.nativeBalanceOf(user1);
                 assert('0' == balance, 'Balance should be zero');
                 balance = await locker.omniverseBalanceOf(user1Pk);
                 assert('0' == balance, 'Balance should be zero');
@@ -579,7 +579,7 @@ contract('SkywalkerFungible', function() {
                 await utils.evmMine(1);
                 let ret = await locker.triggerExecution();
                 assert(ret.logs[0].event == 'OmniverseTokenDeposit');
-                let balance = await locker.balanceOf(user1);
+                let balance = await locker.nativeBalanceOf(user1);
                 assert('0' == balance, 'Balance should be zero');
                 balance = await locker.omniverseBalanceOf(user1Pk);
                 assert(ONE_TOKEN == balance, 'Balance should be one');
@@ -599,7 +599,7 @@ contract('SkywalkerFungible', function() {
                 await utils.evmMine(1);
                 let ret = await locker.triggerExecution();
                 assert(ret.logs[0].event == 'OmniverseTokenDeposit');
-                let balance = await locker.balanceOf(user1);
+                let balance = await locker.nativeBalanceOf(user1);
                 assert('0' == balance, 'Balance should be zero');
                 balance = await locker.omniverseBalanceOf(user1Pk);
                 assert(ONE_TOKEN == balance, 'Balance should be one');

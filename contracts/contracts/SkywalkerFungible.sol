@@ -21,6 +21,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     bytes public committee;
     DepositRequest[] depositRequests;
     uint256 public depositDealingIndex;
+    mapping(address => bytes) accountsMap;
 
     event OmniverseTokenTransfer(bytes from, bytes to, uint256 value);
     event OmniverseTokenWithdraw(bytes from, uint256 value);
@@ -145,6 +146,26 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         return omniverseBalances[_pk];
     }
 
+    /**
+     * @dev See {IERC20-balanceOf}.
+     */
+    function balanceOf(address account) public view virtual override returns (uint256) {
+        bytes storage pk = accountsMap[account];
+        if (pk.length == 0) {
+            return 0;
+        }
+        else {
+            return omniverseBalances[pk];
+        }
+    }
+    
+    /**
+     * @dev See {Replace IERC20-balanceOf}.
+     */
+    function nativeBalanceOf(address account) public view returns (uint256) {
+        return _balances[account];
+    }
+
     function _omniverseTransaction(OmniverseTokenProtocol memory _data) internal {
         // Check if the tx destination is correct
         require(keccak256(abi.encode(_data.to)) == keccak256(abi.encode(tokenIdentity)), "Wrong destination");
@@ -176,6 +197,9 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
             omniverseBalances[_to] += _amount;
 
             emit OmniverseTokenTransfer(_from, _to, _amount);
+
+            address toAddr = pkToAddress(_to);
+            accountsMap[toAddr] = _to;
         }
     }
 
@@ -214,6 +238,9 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     function _omniverseMint(bytes memory _to, uint256 _amount) internal {
         omniverseBalances[_to] += _amount;
         emit OmniverseTokenTransfer("", _to, _amount);
+
+        address toAddr = pkToAddress(_to);
+        accountsMap[toAddr] = _to;
     }
 
     function pkToAddress(bytes memory _pk) internal pure returns (address) {
