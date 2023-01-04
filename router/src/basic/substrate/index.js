@@ -86,7 +86,7 @@ class SubstrateHandler {
 
   async pushMessages() {
     for (let i = 0; i < this.messages.length; i++) {
-      await substrate.sendTransaction(this.api, 'omniverseFactory', 'sendTransaction',
+      await substrate.sendTransaction(this.api, 'assets', 'sendTransaction',
       this.sender, [this.tokenId, this.messages[i]]);
     }
     this.messages = [];
@@ -117,7 +117,7 @@ class SubstrateHandler {
                 });
                 console.log(event.data[0], event.data[1]);
                 let message = await substrate.contractCall(this.api, 'omniverseProtocol', 'transactionRecorder', [event.data[0].toHuman(), event.data[1].toHuman()]);
-                let tokenInfo = await substrate.contractCall(this.api, 'omniverseFactory', 'tokensInfo', [this.tokenId]);
+                let tokenInfo = await substrate.contractCall(this.api, 'assets', 'tokensInfo', [this.tokenId]);
                 console.log('message', message.unwrap(), tokenInfo.unwrap());
                 let m = message.unwrap().txData.toHuman();
                 if (m.to != this.tokenId) {
