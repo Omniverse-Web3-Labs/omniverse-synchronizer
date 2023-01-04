@@ -319,4 +319,8 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
             ret = depositRequests[index];
         }
     }
+
+    function decimals() public view virtual override returns (uint8) {
+        return 12;
+    }
 }
