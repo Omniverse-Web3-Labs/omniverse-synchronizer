@@ -96,10 +96,15 @@ class EthereumHandler {
 
   async pushMessages() {
     for (let i = 0; i < this.messages.length; i++) {
-      await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
-        this.testAccountPrivateKey, [this.messages[i]]);
+      let message = this.messages[i];
+      let nonce = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionCount', [message.from]);
+      if (nonce == message.nonce) {
+        await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
+          this.testAccountPrivateKey, [this.messages[i]]);
+        this.messages.splice(i, 1);
+        break;
+      }
     }
-    this.messages = [];
   }
 
   async tryTrigger() {
