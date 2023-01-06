@@ -99,9 +99,16 @@ class EthereumHandler {
       let message = this.messages[i];
       let nonce = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionCount', [message.from]);
       if (nonce == message.nonce) {
-        let txData = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [message.from, nonce]);
-        let curTime = parseInt(Date.now() / 1000);
-        if (curTime > parseInt(txData.timestamp) + 20) {
+        let coolingDown = false;
+        if (nonce > 0) {
+          let txData = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [message.from, nonce]);
+          let curTime = parseInt(Date.now() / 1000);
+          if (curTime < parseInt(txData.timestamp) + 20) {
+            coolingDown = true;
+          }
+        }
+
+        if (!coolingDown) {
           await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
             this.testAccountPrivateKey, [this.messages[i]]);
           this.messages.splice(i, 1);
