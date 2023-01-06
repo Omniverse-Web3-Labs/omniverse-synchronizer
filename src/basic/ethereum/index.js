@@ -101,7 +101,7 @@ class EthereumHandler {
       if (nonce == message.nonce) {
         let coolingDown = false;
         if (nonce > 0) {
-          let txData = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [message.from, nonce]);
+          let txData = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [message.from, nonce - 1]);
           let curTime = parseInt(Date.now() / 1000);
           if (curTime < parseInt(txData.timestamp) + 20) {
             coolingDown = true;
