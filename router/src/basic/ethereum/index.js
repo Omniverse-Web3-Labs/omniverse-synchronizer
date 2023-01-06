@@ -96,10 +96,32 @@ class EthereumHandler {
 
   async pushMessages() {
     for (let i = 0; i < this.messages.length; i++) {
-      await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
-        this.testAccountPrivateKey, [this.messages[i]]);
+      let message = this.messages[i];
+      let nonce = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionCount', [message.from]);
+      if (nonce == message.nonce) {
+        let coolingDown = false;
+        if (nonce > 0) {
+          let txData = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [message.from, nonce - 1]);
+          let curTime = parseInt(Date.now() / 1000);
+          if (curTime < parseInt(txData.timestamp) + 20) {
+            coolingDown = true;
+          }
+        }
+
+        if (!coolingDown) {
+          await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
+            this.testAccountPrivateKey, [this.messages[i]]);
+          this.messages.splice(i, 1);
+          break;
+        }
+        else {
+          console.log('Cooling down');
+        }
+      }
+      else {
+        console.log('Caching');
+      }
     }
-    this.messages = [];
   }
 
   async tryTrigger() {
