@@ -86,10 +86,15 @@ class SubstrateHandler {
 
   async pushMessages() {
     for (let i = 0; i < this.messages.length; i++) {
-      await substrate.sendTransaction(this.api, 'assets', 'sendTransaction',
-      this.sender, [this.tokenId, this.messages[i]]);
+      let message = this.messages[i];
+      let nonce = await substrate.contractCall(this.api, 'omniverseProtocol', 'transactionCount', message.from);
+      if (nonce == message.nonce) {
+        await substrate.sendTransaction(this.api, 'assets', 'sendTransaction',
+        this.sender, [this.tokenId, message]);
+        this.messages.splice(i, 1);
+        break;
+      }
     }
-    this.messages = [];
   }
 
   async tryTrigger() {
