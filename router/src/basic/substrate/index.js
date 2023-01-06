@@ -103,7 +103,7 @@ class SubstrateHandler {
   async getOmniverseEvent(blockHash, callback) {
     const apiAt = await this.api.at(blockHash);
     await apiAt.query.system.events((events) => {
-        // console.log(`Received ${events.length} events:`);
+        console.log(`Received ${events.length} events:`);
     
         // Loop through the Vec<EventRecord>
         events.forEach(async (record) => {
@@ -120,10 +120,10 @@ class SubstrateHandler {
                 event.data.forEach((data, index) => {
                     // console.log(`\t\t\t${types[index].type}: ${data.toString()}`);
                 });
-                console.log(event.data[0], event.data[1]);
+                // console.log(event.data[0], event.data[1]);
                 let message = await substrate.contractCall(this.api, 'omniverseProtocol', 'transactionRecorder', [event.data[0].toHuman(), event.data[1].toHuman()]);
                 let tokenInfo = await substrate.contractCall(this.api, 'assets', 'tokensInfo', [this.tokenId]);
-                console.log('message', message.unwrap(), tokenInfo.unwrap());
+                // console.log('message', message.unwrap(), tokenInfo.unwrap());
                 let m = message.unwrap().txData.toHuman();
                 if (m.to != this.tokenId) {
                   console.log('Another destination');
