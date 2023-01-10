@@ -16,7 +16,7 @@ async function main() {
       await chainHandlerMgr.loop();
     }
     catch (e) {
-      logger.error(e);
+      logger.error('main error', e);
     }
     logger.info(utils.format('Waiting for {0} seconds...', config.get('scanInterval')));
     await utils.sleep(config.get('scanInterval'));
