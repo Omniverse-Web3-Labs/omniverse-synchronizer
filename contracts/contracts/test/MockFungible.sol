@@ -2,6 +2,7 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import "../SkywalkerFungible.sol";
+import "../OmniverseProtocol.sol";
 
 contract MockFungible is SkywalkerFungible {
     constructor(uint8 _chainId, string memory _tokenId, string memory _name, string memory _symbol) SkywalkerFungible(_chainId, _tokenId, _name, _symbol) {
@@ -9,6 +10,6 @@ contract MockFungible is SkywalkerFungible {
     }
 
     function verifyTransaction(OmniverseTokenProtocol memory _data) external returns (VerifyResult) {
-        return _verifyTransaction(_data);
+        return OmniverseProtocol.verifyTransaction(transactionRecorder[_data.from], _data);
     }
 }

@@ -14,3 +14,20 @@ struct OmniverseTokenProtocol {
     bytes data;
     bytes signature;
 }
+    
+struct OmniverseTx {
+    OmniverseTokenProtocol txData;
+    uint256 timestamp;
+}
+
+struct EvilTxData {
+    OmniverseTx txData;
+    uint256 hisNonce;
+}
+
+struct RecordedCertificate {
+    // uint256 nonce;
+    // address evmAddress;
+    OmniverseTx[] txList;
+    EvilTxData[] evilTxList;
+}

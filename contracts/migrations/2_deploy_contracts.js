@@ -11,6 +11,8 @@ module.exports = async function (deployer, network) {
     return;
   }
 
+  // await deployer.deploy(OmniverseProtocol);
+  await deployer.link(OmniverseProtocol, SkywalkerFungible);
   await deployer.deploy(SkywalkerFungible, "X", "X", "X");
 
   // Update config

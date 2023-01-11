@@ -3,11 +3,16 @@ pragma solidity >=0.8.0 <0.9.0;
 
 import "./OmniverseData.sol";
 
+enum VerifyResult {
+    Success,
+    Malicious
+}
+
 library OmniverseProtocol {
     /**
      * @dev Get the hash of a tx
      */
-    function getTransactionHash(OmniverseTokenProtocol memory _data) internal pure returns (bytes32) {
+    function getTransactionHash(OmniverseTokenProtocol memory _data) public pure returns (bytes32) {
         bytes memory bData;
         (uint8 op, bytes memory wrappedData) = abi.decode(_data.data, (uint8, bytes));
         if (op == WITHDRAW) {
@@ -33,7 +38,7 @@ library OmniverseProtocol {
     /**
      * @dev Recover the address
      */
-    function recoverAddress(bytes32 _hash, bytes memory _signature) internal pure returns (address) {
+    function recoverAddress(bytes32 _hash, bytes memory _signature) public pure returns (address) {
         uint8 v;
         bytes32 r;
         bytes32 s;
@@ -50,9 +55,42 @@ library OmniverseProtocol {
     /**
      * @dev Check if the public key matches the recovered address
      */
-    function checkPkMatched(bytes memory _pk, address _address) internal pure {
+    function checkPkMatched(bytes memory _pk, address _address) public pure {
         bytes32 hash = keccak256(_pk);
         address pkAddress = address(uint160(uint256(hash)));
         require(_address == pkAddress, "Sender not signer");
+    }
+
+    function verifyTransaction(RecordedCertificate storage rc, OmniverseTokenProtocol memory _data) public returns (VerifyResult) {
+        uint256 nonce = rc.txList.length;
+        
+        bytes32 txHash = getTransactionHash(_data);
+        address recoveredAddress = recoverAddress(txHash, _data.signature);
+        // Signature verified failed
+        checkPkMatched(_data.from, recoveredAddress);
+
+        // Check nonce
+        if (nonce == _data.nonce) {
+            return VerifyResult.Success;
+        }
+        else if (nonce > _data.nonce) {
+            // The message has been received, check conflicts
+            OmniverseTx storage hisTx = rc.txList[_data.nonce];
+            bytes32 hisTxHash = getTransactionHash(hisTx.txData);
+            if (hisTxHash != txHash) {
+                // to be continued, add to evil list, but can not be duplicated
+                EvilTxData storage evilTx = rc.evilTxList.push();
+                evilTx.hisNonce = nonce;
+                evilTx.txData.txData = _data;
+                evilTx.txData.timestamp = block.timestamp;
+                return VerifyResult.Malicious;
+            }
+            else {
+                revert("Transaction duplicated");
+            }
+        }
+        else {
+            revert("Nonce error");
+        }
     }
 }
