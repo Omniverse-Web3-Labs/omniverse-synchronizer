@@ -3,11 +3,6 @@ pragma solidity >=0.8.0 <0.9.0;
 
 import "./IOmniverseProtocol.sol";
 
-uint8 constant DEPOSIT = 0;
-uint8 constant TRANSFER = 1;
-uint8 constant WITHDRAW = 2;
-uint8 constant MINT = 3;
-
 struct DepositRequest {
     bytes receiver;
     uint256 amount;

@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
+uint8 constant DEPOSIT = 0;
+uint8 constant TRANSFER = 1;
+uint8 constant WITHDRAW = 2;
+uint8 constant MINT = 3;
+
 enum VerifyResult {
     Success,
     Malicious
@@ -8,7 +13,7 @@ enum VerifyResult {
 
 struct OmniverseTokenProtocol {
     uint256 nonce;
-    string chainId;
+    uint8 chainId;
     bytes from;
     string to;
     bytes data;
@@ -46,5 +51,5 @@ interface IOmniverseProtocol {
     /**
      * @dev Returns the chain ID
      */
-    function getChainId() external view returns (string memory);
+    function getChainId() external view returns (uint8);
 }

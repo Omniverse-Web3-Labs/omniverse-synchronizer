@@ -10,7 +10,7 @@ async function init() {
 async function main() {
   logger.info("Launch validator node...");
   await init();
-  chainHandlerMgr.run();
+  await chainHandlerMgr.run();
   while (true) {
     try {
       await chainHandlerMgr.loop();

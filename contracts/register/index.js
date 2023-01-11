@@ -1,20 +1,8 @@
 const Web3 = require('web3');
-const BN = require('bn.js');
 const fs = require('fs');
 const ethereum = require('./ethereum');
 const { program } = require('commander');
 const config = require('config');
-const utils = require('./utils');
-const eccrypto = require('eccrypto');
-const keccak256 = require('keccak256');
-const secp256k1 = require('secp256k1');
-
-const TOKEN_ID = 'Skywalker';
-
-const DEPOSIT = 0;
-const TRANSFER = 1;
-const WITHDRAW = 2;
-const MINT = 3;
 
 let web3;
 let netConfig;
@@ -47,11 +35,6 @@ function _init(chainName) {
     // Load contract abi, and init contract object
     const omniverseProtocolRawData = fs.readFileSync('./build/contracts/OmniverseProtocol.json');
     const omniverProtocolAbi = JSON.parse(omniverseProtocolRawData).abi;
-    
-    let skywalkerFungibleAddress = netConfig.skywalkerFungibleAddress;
-    // Load contract abi, and init contract object
-    const skywalkerFungibleRawData = fs.readFileSync('./build/contracts/SkywalkerFungible.json');
-    const skywalkerFungibleAbi = JSON.parse(skywalkerFungibleRawData).abi;
 
     let web3 = new Web3(netConfig.nodeAddress);
     web3.eth.handleRevert = true;
@@ -204,26 +187,6 @@ async function omniverseBalanceOf(pk) {
     console.log('amount', amount);
 }
 
-async function balanceOf(address) {
-    let amount = await ethereum.contractCall(skywalkerFungibleContract, 'balanceOf', [address]);
-    console.log('amount', amount);
-}
-
-async function trigger() {
-    await ethereum.sendTransaction(web3, netConfig.chainId, skywalkerFungibleContract, 'triggerExecution',
-        testAccountPrivateKey, []);
-}
-
-async function getDelayedTx() {
-    let ret = await ethereum.contractCall(skywalkerFungibleContract, 'getExecutableDelayedTx', []);
-    console.log('ret', ret);
-}
-
-async function getAllowance(owner, spender) {
-    let ret = await ethereum.contractCall(skywalkerFungibleContract, 'allowance', [owner, spender]);
-    console.log('ret', ret);
-}
-
 (async function () {
     function list(val) {
 		return val.split(',')
@@ -332,7 +295,7 @@ async function getAllowance(owner, spender) {
             return;
         }
         
-        if (!init(program.opts().omniBalance[0])) {
+        if (!init('BSCTEST')) {
             return;
         }
         await omniverseBalanceOf(program.opts().omniBalance[1]);

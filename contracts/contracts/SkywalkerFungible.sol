@@ -14,13 +14,14 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
     IOmniverseProtocol public omniverseProtocol;
     string public tokenIdentity;
-    string[] members;
+    uint8[] members;
     mapping(bytes => uint256) omniverseBalances;
     mapping(bytes => uint256) prisons;
     DelayedTx[] delayedTxs;
     bytes public committee;
     DepositRequest[] depositRequests;
     uint256 public depositDealingIndex;
+    mapping(address => bytes) accountsMap;
 
     event OmniverseTokenTransfer(bytes from, bytes to, uint256 value);
     event OmniverseTokenWithdraw(bytes from, uint256 value);
@@ -96,7 +97,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         (uint8 op, bytes memory wrappedData) = abi.decode(txData.data, (uint8, bytes));
         if (op == WITHDRAW) {
             (uint256 amount) = abi.decode(wrappedData, (uint256));
-            _omniverseWithdraw(txData.from, amount, keccak256(bytes(txData.chainId)) == keccak256(bytes(omniverseProtocol.getChainId())));
+            _omniverseWithdraw(txData.from, amount, txData.chainId == omniverseProtocol.getChainId());
         }
         else if (op == TRANSFER) {
             (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
@@ -145,6 +146,26 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         return omniverseBalances[_pk];
     }
 
+    /**
+     * @dev See {IERC20-balanceOf}.
+     */
+    function balanceOf(address account) public view virtual override returns (uint256) {
+        bytes storage pk = accountsMap[account];
+        if (pk.length == 0) {
+            return 0;
+        }
+        else {
+            return omniverseBalances[pk];
+        }
+    }
+    
+    /**
+     * @dev See {Replace IERC20-balanceOf}.
+     */
+    function nativeBalanceOf(address account) public view returns (uint256) {
+        return _balances[account];
+    }
+
     function _omniverseTransaction(OmniverseTokenProtocol memory _data) internal {
         // Check if the tx destination is correct
         require(keccak256(abi.encode(_data.to)) == keccak256(abi.encode(tokenIdentity)), "Wrong destination");
@@ -176,6 +197,9 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
             omniverseBalances[_to] += _amount;
 
             emit OmniverseTokenTransfer(_from, _to, _amount);
+
+            address toAddr = pkToAddress(_to);
+            accountsMap[toAddr] = _to;
         }
     }
 
@@ -214,6 +238,9 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     function _omniverseMint(bytes memory _to, uint256 _amount) internal {
         omniverseBalances[_to] += _amount;
         emit OmniverseTokenTransfer("", _to, _amount);
+
+        address toAddr = pkToAddress(_to);
+        accountsMap[toAddr] = _to;
     }
 
     function pkToAddress(bytes memory _pk) internal pure returns (address) {
@@ -225,18 +252,23 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         return block.timestamp;
     }
 
-    function addMembers(string[] calldata _members) external onlyOwner {
+    function addMembers(uint8[] calldata _members) external onlyOwner {
         for (uint256 i = 0; i < _members.length; i++) {
+            bool found = false;
             for (uint256 j = 0; j < members.length; j++) {
-                if (keccak256(bytes(members[j])) == keccak256(bytes(_members[i]))) {
+                if (members[j] == _members[i]) {
+                    found = true;
                     break;
                 }
             }
-            members.push(_members[i]);
+            
+            if (!found) {
+                members.push(_members[i]);
+            }
         }
     }
 
-    function getMembers() external view returns (string[] memory) {
+    function getMembers() external view returns (uint8[] memory) {
         return members;
     }
 
@@ -286,5 +318,9 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         if (depositRequests.length > index) {
             ret = depositRequests[index];
         }
+    }
+
+    function decimals() public view virtual override returns (uint8) {
+        return 12;
     }
 }
