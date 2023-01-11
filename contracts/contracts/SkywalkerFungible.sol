@@ -3,16 +3,41 @@ pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./ERC20.sol";
-import "./interfaces/IOmniverseProtocol.sol";
+import "./OmniverseProtocol.sol";
 import "./interfaces/IOmniverseFungible.sol";
 
 contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
+    enum VerifyResult {
+        Success,
+        Malicious
+    }
+
     struct DelayedTx {
         bytes sender;
         uint256 nonce;
     }
+    
+    struct OmniverseTx {
+        OmniverseTokenProtocol txData;
+        uint256 timestamp;
+    }
 
-    IOmniverseProtocol public omniverseProtocol;
+    struct EvilTxData {
+        OmniverseTx txData;
+        uint256 hisNonce;
+    }
+
+    struct RecordedCertificate {
+        // uint256 nonce;
+        // address evmAddress;
+        OmniverseTx[] txList;
+        EvilTxData[] evilTxList;
+    }
+
+    uint8 public chainId;
+    uint256 public cdTime;
+    mapping(bytes => RecordedCertificate) transactionRecorder;
+
     string public tokenIdentity;
     uint8[] members;
     mapping(bytes => uint256) omniverseBalances;
@@ -30,15 +55,17 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     event OmniverseTokenWrongOp(bytes sender, uint8 op);
     event OmniverseNotOwner(bytes sender);
     event OmniverseError(bytes sender, string reason);
+    event TransactionSent(bytes pk, uint256 nonce);
 
     modifier onlyCommittee() {
-        address committeeAddr = pkToAddress(committee);
+        address committeeAddr = _pkToAddress(committee);
         require(msg.sender == committeeAddr, "Only committee can approve deposits");
         _;
     }
 
-    constructor(string memory _tokenId, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
+    constructor(uint8 _chainId, string memory _tokenId, string memory _name, string memory _symbol) ERC20(_name, _symbol) {
         tokenIdentity = _tokenId;
+        chainId = _chainId;
     }
 
     /**
@@ -49,37 +76,10 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     }
 
     /**
-     * @dev Set the address of the omniverse protocol
-     */
-    function setOmniverseProtocolAddress(address _address) public onlyOwner {
-        omniverseProtocol = IOmniverseProtocol(_address);
-    }
-
-    /**
      * @dev See {IOmniverseFungible-omniverseTransfer}
-     * Transfer omniverse tokens to a user
+     * Send an omniverse transaction
      */
-    function omniverseTransfer(OmniverseTokenProtocol calldata _data) external override {
-        _omniverseTransaction(_data);
-    }
-
-    /**
-     * @dev See {IOmniverseFungible-omniverseWithdraw}
-     * Convert omniverse token to ERC20 token
-     */
-    function omniverseWithdraw(OmniverseTokenProtocol calldata _data) external override {
-        _omniverseTransaction(_data);
-    }
-
-    /**
-     * @dev See {IOmniverseFungible-omniverseDeposit}
-     * Convert ERC20 token to omniverse token
-     */
-    function omniverseDeposit(OmniverseTokenProtocol calldata _data) external override {
-        _omniverseTransaction(_data);
-    }
-
-    function omniverseMint(OmniverseTokenProtocol calldata _data) external {
+    function sendOmniverseTransaction(OmniverseTokenProtocol calldata _data) external override {
         _omniverseTransaction(_data);
     }
 
@@ -89,15 +89,16 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
     function triggerExecution() external {
         require(delayedTxs.length > 0, "No delayed tx");
 
-        (OmniverseTokenProtocol memory txData, uint256 timestamp) = omniverseProtocol.getTransactionData(delayedTxs[0].sender, delayedTxs[0].nonce);
-        require(block.timestamp >= timestamp + omniverseProtocol.getCoolingDownTime(), "Not executable");
+        OmniverseTx storage omniTx = transactionRecorder[delayedTxs[0].sender].txList[delayedTxs[0].nonce];
+        (OmniverseTokenProtocol storage txData, uint256 timestamp) = (omniTx.txData, omniTx.timestamp);
+        require(block.timestamp >= timestamp + cdTime, "Not executable");
         delayedTxs[0] = delayedTxs[delayedTxs.length - 1];
         delayedTxs.pop();
 
         (uint8 op, bytes memory wrappedData) = abi.decode(txData.data, (uint8, bytes));
         if (op == WITHDRAW) {
             (uint256 amount) = abi.decode(wrappedData, (uint256));
-            _omniverseWithdraw(txData.from, amount, txData.chainId == omniverseProtocol.getChainId());
+            _omniverseWithdraw(txData.from, amount, txData.chainId == chainId);
         }
         else if (op == TRANSFER) {
             (bytes memory to, uint256 amount) = abi.decode(wrappedData, (bytes, uint256));
@@ -108,7 +109,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
             _omniverseDeposit(txData.from, to, amount);
         }
         else if (op == MINT) {
-            address fromAddr = pkToAddress(txData.from);
+            address fromAddr = _pkToAddress(txData.from);
             if (fromAddr != owner()) {
                 emit OmniverseNotOwner(txData.from);
                 return;
@@ -127,8 +128,8 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
      */
     function getExecutableDelayedTx() external view returns (DelayedTx memory ret) {
         if (delayedTxs.length > 0) {
-            (, uint256 timestamp) = omniverseProtocol.getTransactionData(delayedTxs[0].sender, delayedTxs[0].nonce);
-            if (block.timestamp >= timestamp + omniverseProtocol.getCoolingDownTime()) {
+            OmniverseTx storage omniTx = transactionRecorder[delayedTxs[0].sender].txList[delayedTxs[0].nonce];
+            if (block.timestamp >= omniTx.timestamp + cdTime) {
                 ret = delayedTxs[0];
             }
         }
@@ -172,10 +173,10 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
         // Check if the sender is honest
         // to be continued, we can use block list instead of `isMalicious`
-        require(!omniverseProtocol.isMalicious(_data.from), "User is malicious");
+        require(!isMalicious(_data.from), "User is malicious");
 
         // Verify the signature
-        VerifyResult verifyRet = omniverseProtocol.verifyTransaction(_data);
+        VerifyResult verifyRet = _verifyTransaction(_data);
         if (verifyRet == VerifyResult.Success) {
             // Delays in executing
             delayedTxs.push(DelayedTx(_data.from, _data.nonce));
@@ -198,7 +199,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
             emit OmniverseTokenTransfer(_from, _to, _amount);
 
-            address toAddr = pkToAddress(_to);
+            address toAddr = _pkToAddress(_to);
             accountsMap[toAddr] = _to;
         }
     }
@@ -214,7 +215,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
             }
             
             if (_thisChain) {
-                address ownerAddr = pkToAddress(_from);
+                address ownerAddr = _pkToAddress(_from);
 
                 // mint
                 _totalSupply += _amount;
@@ -239,11 +240,11 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
         omniverseBalances[_to] += _amount;
         emit OmniverseTokenTransfer("", _to, _amount);
 
-        address toAddr = pkToAddress(_to);
+        address toAddr = _pkToAddress(_to);
         accountsMap[toAddr] = _to;
     }
 
-    function pkToAddress(bytes memory _pk) internal pure returns (address) {
+    function _pkToAddress(bytes memory _pk) internal pure returns (address) {
         bytes32 hash = keccak256(_pk);
         return address(uint160(uint256(hash)));
     }
@@ -276,7 +277,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
      * @dev Users request to convert native token to omniverse token
      */
     function requestDeposit(bytes calldata from, uint256 amount) external {
-        address fromAddr = pkToAddress(from);
+        address fromAddr = _pkToAddress(from);
         require(fromAddr == msg.sender, "Signer and receiver not match");
 
         uint256 fromBalance = _balances[fromAddr];
@@ -302,7 +303,7 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
         OmniverseTokenProtocol memory p;
         p.nonce = nonce;
-        p.chainId = omniverseProtocol.getChainId();
+        p.chainId = chainId;
         p.from = committee;
         p.to = tokenIdentity;
         p.signature = signature;
@@ -322,5 +323,80 @@ contract SkywalkerFungible is ERC20, Ownable, IOmniverseFungible {
 
     function decimals() public view virtual override returns (uint8) {
         return 12;
+    }
+
+    function _verifyTransaction(OmniverseTokenProtocol memory _data) internal returns (VerifyResult) {
+        RecordedCertificate storage rc = transactionRecorder[_data.from];
+        uint256 nonce = transactionRecorder[_data.from].txList.length;
+        
+        bytes32 txHash = OmniverseProtocol.getTransactionHash(_data);
+        address recoveredAddress = OmniverseProtocol.recoverAddress(txHash, _data.signature);
+        // Signature verified failed
+        OmniverseProtocol.checkPkMatched(_data.from, recoveredAddress);
+
+        // Check nonce
+        if (nonce == _data.nonce) {
+            uint256 lastestTxTime = 0;
+            if (rc.txList.length > 0) {
+                lastestTxTime = rc.txList[rc.txList.length - 1].timestamp;
+            }
+            require(block.timestamp >= lastestTxTime + cdTime, "Transaction cooling down");
+            // Add to transaction recorder
+            OmniverseTx storage omniTx = rc.txList.push();
+            omniTx.timestamp = block.timestamp;
+            omniTx.txData = _data;
+            if (_data.chainId == chainId) {
+                emit TransactionSent(_data.from, _data.nonce);
+            }
+        }
+        else if (nonce > _data.nonce) {
+            // The message has been received, check conflicts
+            OmniverseTx storage hisTx = rc.txList[_data.nonce];
+            bytes32 hisTxHash = OmniverseProtocol.getTransactionHash(hisTx.txData);
+            if (hisTxHash != txHash) {
+                // to be continued, add to evil list, but can not be duplicated
+                EvilTxData storage evilTx = rc.evilTxList.push();
+                evilTx.hisNonce = nonce;
+                evilTx.txData.txData = _data;
+                evilTx.txData.timestamp = block.timestamp;
+                return VerifyResult.Malicious;
+            }
+            else {
+                revert("Transaction duplicated");
+            }
+        }
+        else {
+            revert("Nonce error");
+        }
+        return VerifyResult.Success;
+    }
+
+    /**
+     * @dev See IOmniverseProtocl
+     */
+    function getTransactionCount(bytes memory _pk) external view returns (uint256) {
+        return transactionRecorder[_pk].txList.length;
+    }
+
+    /**
+     * @dev Returns the transaction data of the user with a specified nonce
+     */
+    function getTransactionData(bytes calldata _user, uint256 _nonce) external view returns (OmniverseTokenProtocol memory txData, uint256 timestamp) {
+        RecordedCertificate storage rc = transactionRecorder[_user];
+        OmniverseTx storage omniTx = rc.txList[_nonce];
+        txData = omniTx.txData;
+        timestamp = omniTx.timestamp;
+    }
+
+    function setCooingDownTime(uint256 _time) external {
+        cdTime = _time;
+    }
+
+    /**
+     * @dev See IOmniverseFungible
+     */
+    function isMalicious(bytes memory _pk) public view returns (bool) {
+        RecordedCertificate storage rc = transactionRecorder[_pk];
+        return (rc.evilTxList.length > 0);
     }
 }
