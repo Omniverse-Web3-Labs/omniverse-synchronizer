@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
-import "./IOmniverseProtocol.sol";
+import "../OmniverseData.sol";
 
 struct DepositRequest {
     bytes receiver;
@@ -10,19 +10,9 @@ struct DepositRequest {
 
 interface IOmniverseFungible {
     /**
-     * @dev Transfer omniverse tokens to a user
+     * @dev Send an omniverse transaction
      */
-    function omniverseTransfer(OmniverseTokenProtocol calldata _data) external;
-
-    /**
-     * @dev Convert omniverse token to ERC20 token
-     */
-    function omniverseWithdraw(OmniverseTokenProtocol calldata _data) external;
-
-    /**
-     * @dev Convert ERC20 token to omniverse token
-     */
-    function omniverseDeposit(OmniverseTokenProtocol calldata _data) external;
+    function sendOmniverseTransaction(OmniverseTokenProtocol calldata _data) external;
 
     /**
      * @dev Returns the omniverse balance of a user
