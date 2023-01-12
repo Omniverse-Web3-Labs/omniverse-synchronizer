@@ -11,10 +11,7 @@ const globalDefine = require('../../utils/globalDefine.js');
 const OMNIVERSE_TOKEN_TRANSFER = 'OmniverseTokenTransfer';
 const OMNIVERSE_TOKEN_WITHDRAW = 'OmniverseTokenWithdraw';
 const OMNIVERSE_TOKEN_DEPOSIT = 'OmniverseTokenDeposit';
-const OMNIVERSE_TOKEN_EXCEED_BALANCE = 'OmniverseTokenExceedBalance';
 const OMNIVERSE_TOKEN_WRONG_OP = 'OmniverseTokenWrongOp';
-const OMNIVERSE_NOT_OWNER = 'OmniverseNotOwner';
-const OMNIVERSE_ERROR = 'OmniverseError';
 
 class EthereumHandler {
   constructor(chainName) {
@@ -37,11 +34,6 @@ class EthereumHandler {
     this.web3.eth.handleRevert = true;
     let secret = JSON.parse(fs.readFileSync(config.get('secret')));
     this.testAccountPrivateKey = secret[this.chainName];
-    // OmniverseProtocol
-    let omniverseProtocolContractAddress = config.get('networks.' + this.chainName + '.omniverseProtocolContractAddress');
-    let omniverseProtocolRawData = fs.readFileSync(config.get('networks.' + this.chainName + '.omniverseProtocolAbiPath'));
-    let omniverseProtocolAbi = JSON.parse(omniverseProtocolRawData).abi;
-    this.omniverseProtocolContract = new this.web3.eth.Contract(omniverseProtocolAbi, omniverseProtocolContractAddress);
     // SkywalkerFungible
     let skywalkerFungibleContractAddress = config.get('networks.' + this.chainName + '.skywalkerFungibleContractAddress');
     let skywalkerFungibleRawData = fs.readFileSync(config.get('networks.' + this.chainName + '.skywalkerFungibleAbiPath'));
@@ -64,54 +56,27 @@ class EthereumHandler {
         this.eventOmniverseTokenDeposit = skywalkerFungibleAbi[i];
         this.eventOmniverseTokenDeposit.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenDeposit);
       }
-      else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_TOKEN_EXCEED_BALANCE) {
-        this.eventOmniverseTokenExceedBalance = skywalkerFungibleAbi[i];
-        this.eventOmniverseTokenExceedBalance.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenExceedBalance);
-      }
       else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_TOKEN_WRONG_OP) {
         this.eventOmniverseTokenWrongOp = skywalkerFungibleAbi[i];
         this.eventOmniverseTokenWrongOp.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenWrongOp);
-      }
-      else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_NOT_OWNER) {
-        this.eventOmniverseNotOwner = skywalkerFungibleAbi[i];
-        this.eventOmniverseNotOwner.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseNotOwner);
-      }
-      else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_ERROR) {
-        this.eventOmniverseError = skywalkerFungibleAbi[i];
-        this.eventOmniverseError.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseError);
       }
     }
   }
 
   async addMessageToList(message) {
-    let opData;
-    if (message.data.op == globalDefine.TokenOpType.TRANSFER) {
-      let data = this.web3.eth.abi.encodeParameters(['bytes', 'uint256'], [message.data.to, message.data.amount]);
-      opData = this.web3.eth.abi.encodeParameters(['uint8', 'bytes'], [message.data.op, data]);
-    }
-    else if (message.data.op == globalDefine.TokenOpType.MINT) {
-      let data = this.web3.eth.abi.encodeParameters(['bytes', 'uint256'], [message.data.to, message.data.amount]);
-      opData = this.web3.eth.abi.encodeParameters(['uint8', 'bytes'], [message.data.op, data]);
-    }
-
-    this.messages.push({
-      nonce: message.nonce,
-      from: message.from,
-      to: message.to,
-      chainId: message.chainId,
-      data: opData,
-      signature: message.signature,
-    });
+    this.messages.push(
+      JSON.parse(JSON.stringify(message));
+    );
   }
 
   async pushMessages() {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
-      let nonce = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionCount', [message.from]);
+      let nonce = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [message.from]);
       if (nonce == message.nonce) {
         let coolingDown = false;
         if (nonce > 0) {
-          let txData = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [message.from, nonce - 1]);
+          let txData = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [message.from, nonce - 1]);
           let curTime = parseInt(Date.now() / 1000);
           if (curTime < parseInt(txData.timestamp) + 20) {
             coolingDown = true;
@@ -202,7 +167,7 @@ class EthereumHandler {
   }
 
   async start(callback) {
-    this.omniverseProtocolContract.events.TransactionSent()
+    this.skywalkerFungibleContract.events.TransactionSent()
     .on("connected", (subscriptionId) => {
       logger.info('connected', subscriptionId);
     })
@@ -210,7 +175,7 @@ class EthereumHandler {
       logger.debug('event', event);
       // to be continued, decoding is needed here for omniverse
       console.log(event.returnValues.pk, event.returnValues.nonce);
-      let message = await ethereum.contractCall(this.omniverseProtocolContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
+      let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
       if (message.txData.to != this.tokenId) {
         console.log('Another destination');
         return;
