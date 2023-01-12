@@ -1,4 +1,9 @@
 module.exports = {
+    TokenOpType: {
+        TRANSFER: 1,
+        MINT: 3,
+    },
+
     ErrorCode: {
         SUCCESS: 0,
         GET_MESSAGE_ERROR: 1,

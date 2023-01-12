@@ -10,13 +10,13 @@ async function init() {
 async function main() {
   logger.info("Launch validator node...");
   await init();
-  chainHandlerMgr.run();
+  await chainHandlerMgr.run();
   while (true) {
     try {
       await chainHandlerMgr.loop();
     }
     catch (e) {
-      logger.error(e);
+      logger.error('main error', e);
     }
     logger.info(utils.format('Waiting for {0} seconds...', config.get('scanInterval')));
     await utils.sleep(config.get('scanInterval'));

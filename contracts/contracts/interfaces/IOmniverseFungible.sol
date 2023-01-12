@@ -1,28 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
-import "./IOmniverseProtocol.sol";
+import "../OmniverseData.sol";
 
-uint8 constant TRANSFER_FROM = 0;
-uint8 constant TRANSFER = 1;
-uint8 constant APPROVE = 2;
-uint8 constant MINT = 3;
+struct DepositRequest {
+    bytes receiver;
+    uint256 amount;
+}
 
 interface IOmniverseFungible {
     /**
-     * @dev Transfer omniverse tokens to a user
+     * @dev Send an omniverse transaction
      */
-    function omniverseTransfer(OmniverseTokenProtocol calldata _data) external;
-
-    /**
-     * @dev Approve omniverse tokens for a user
-     */
-    function omniverseApprove(OmniverseTokenProtocol calldata _data) external;
-
-    /**
-     * @dev Transfer omniverse tokens from a user to another user
-     */
-    function omniverseTransferFrom(OmniverseTokenProtocol calldata _data) external;
+    function sendOmniverseTransaction(OmniverseTokenProtocol calldata _data) external;
 
     /**
      * @dev Returns the omniverse balance of a user

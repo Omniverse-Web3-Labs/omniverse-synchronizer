@@ -48,12 +48,27 @@ module.exports = {
     },
     // PlatON development network based on evm
     PLATONEVMDEV: {
-      provider: () => new HDWalletProvider(mnemonic, `wss://devnetopenapi2.platon.network/ws`),
+      provider: () => new HDWalletProvider(mnemonic, `wss://devnet2openapi.platon.network/ws`),
       network_id: "*",       // Any network (default: none)
     },
     // PlatON main network based on evm
     PLATONEVM: {
       provider: () => new HDWalletProvider(mnemonic, `wss://openapi.platon.network/ws`),
+      network_id: "*",       // Any network (default: none)
+    },
+    // Moonbeam testnet
+    MOONBASEALPHA: {
+      provider: () => new HDWalletProvider(mnemonic, `wss://moonbeam-alpha.api.onfinality.io/public-ws`),
+      network_id: "*",       // Any network (default: none)
+    },
+    // BSC testnet
+    BSCTEST: {
+      provider: () => new HDWalletProvider(mnemonic, `https://bsc-testnet.public.blastapi.io`),
+      network_id: "*",       // Any network (default: none)
+    },
+    // BSC testnet
+    GOERLI: {
+      provider: () => new HDWalletProvider(mnemonic, `wss://goerli.infura.io/ws/v3/94ebec44ffc34501898dd5dccf387f81`),
       network_id: "*",       // Any network (default: none)
     },
     // Another network with more advanced options...

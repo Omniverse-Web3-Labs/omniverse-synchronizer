@@ -2,24 +2,40 @@
   "scanInterval": 10,
   "logLevel": "debug",
   "secret": "config/.secret",
+  "tokenId": "X",
   "networks": {
-    "PLATONEVMDEV": {
-      "nodeAddress": "wss://devnetopenapi2.platon.network/ws",
-      "chainId": 2203181,
-      "omniverseProtocolContractAddress": "0x61513E609832E29393cC35229ad28839DCf34870",
+    // "PLATONEVMDEV": {
+    //   "nodeAddress": "wss://devnet2openapi.platon.network/ws",
+    //   "chainId": 2206132,
+    //   "omniverseProtocolContractAddress": "0x17F4be3cb15AaA815FC50B0FfF84037122D62d89",
+    //   "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
+    //   "skywalkerFungibleContractAddress": "0x17F4be3cb15AaA815FC50B0FfF84037122D62d89",
+    //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
+    //   "compatibleChain": "ethereum"
+    // },
+    "BSCTEST": {
+      "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
+      "chainId": 97,
+      "omniverseProtocolContractAddress": "0xdB9B0f4F6aFC13EaBBC9fa126662a1D77BAfdC98",
       "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
-      "skywalkerFungibleContractAddress": "0x950a980AE663A7B187Db806D5C7D4d7dabe7aAF4",
+      "skywalkerFungibleContractAddress": "0x2fea6b82bAd2999C8Abb0C072363f86f2add5292",
       "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
-      "compatibleChain": "ethereum"
+      "compatibleChain": "ethereum",
+      "omniverseChainId": 0
     },
-    "PLATONEVM": {
-      "nodeAddress": "wss://openapi.platon.network/ws",
-      "chainId": 210425,
-      "omniverseProtocolContractAddress": "0x9e9E6c6006a8570e43c968902DBe84786EbDF7b8",
-      "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
-      "skywalkerFungibleContractAddress": "0x7F2607b6Cd8471377CAAF9b73C20936FFbf458CD",
-      "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
-      "compatibleChain": "ethereum"
+    // "MOONBASEALPHA": {
+    //   "nodeAddress": "wss://moonbeam-alpha.api.onfinality.io/public-ws",
+    //   "chainId": 1287,
+    //   "omniverseProtocolContractAddress": "0x00895B049b8BEe629FF5CB76f7DE92596E047972",
+    //   "omniverseProtocolAbiPath": "./res/OmniverseProtocol.json",
+    //   "skywalkerFungibleContractAddress": "0xBFee24f1fCF9c1Bfb7C788efC9ef6D1F2dBf5BFF",
+    //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
+    //   "compatibleChain": "ethereum"
+    // },
+    "SUBSTRATE": {
+      "nodeAddress": "ws://127.0.0.1:9944",
+      "compatibleChain": "substrate",
+      "omniverseChainId": 1
     }
   }
 }
