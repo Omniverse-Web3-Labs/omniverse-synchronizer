@@ -74,23 +74,15 @@ class EthereumHandler {
       let message = this.messages[i];
       let nonce = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [message.from]);
       if (nonce == message.nonce) {
-        let coolingDown = false;
-        if (nonce > 0) {
-          let txData = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [message.from, nonce - 1]);
-          let curTime = parseInt(Date.now() / 1000);
-          if (curTime < parseInt(txData.timestamp) + 20) {
-            coolingDown = true;
-          }
-        }
-
-        if (!coolingDown) {
+        let txData = await ethereum.contractCall(this.skywalkerFungibleContract, 'transactionCache', [message.from]);
+        if (txData.timestamp == 0) {
           await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
             this.testAccountPrivateKey, [this.messages[i]]);
           this.messages.splice(i, 1);
           break;
         }
         else {
-          console.log('Cooling down');
+          log.info('Cooling down');
         }
       }
       else {
