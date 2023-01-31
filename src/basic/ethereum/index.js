@@ -56,10 +56,6 @@ class EthereumHandler {
         this.eventOmniverseTokenDeposit = skywalkerFungibleAbi[i];
         this.eventOmniverseTokenDeposit.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenDeposit);
       }
-      else if (skywalkerFungibleAbi[i].type == 'event' && skywalkerFungibleAbi[i].name == OMNIVERSE_TOKEN_WRONG_OP) {
-        this.eventOmniverseTokenWrongOp = skywalkerFungibleAbi[i];
-        this.eventOmniverseTokenWrongOp.signature = this.web3.eth.abi.encodeEventSignature(this.eventOmniverseTokenWrongOp);
-      }
     }
   }
 
@@ -76,7 +72,7 @@ class EthereumHandler {
       if (nonce == message.nonce) {
         let txData = await ethereum.contractCall(this.skywalkerFungibleContract, 'transactionCache', [message.from]);
         if (txData.timestamp == 0) {
-          await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'omniverseTransfer',
+          await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'sendOmniverseTransaction',
             this.testAccountPrivateKey, [this.messages[i]]);
           this.messages.splice(i, 1);
           break;
@@ -101,26 +97,7 @@ class EthereumHandler {
       for (let i = 0; i < receipt.logs.length; i++) {
         let log = receipt.logs[i];
         if (log.address == this.skywalkerFungibleContract._address) {
-          if (log.topics[0] == this.eventOmniverseError.signature) {
-            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseError.inputs, log.data, log.topics.slice(1));
-            logger.info(utils.format('Execute failed: sent by {0}, the reason is {1}.',
-              decodedLog.sender, decodedLog.reason));
-          }
-          else if (log.topics[0] == this.eventOmniverseNotOwner.signature) {
-            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseNotOwner.inputs, log.data, log.topics.slice(1));
-            logger.info(utils.format('Execute failed due to not owner: sent by {0}.', decodedLog.sender));
-          }
-          else if (log.topics[0] == this.eventOmniverseNotOwner.signature) {
-            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseNotOwner.inputs, log.data, log.topics.slice(1));
-            logger.info(utils.format('Execute failed due to wrong Op: sent by {0}, the op code is {1}.',
-              decodedLog.sender, decodedLog.op));
-          }
-          else if (log.topics[0] == this.eventOmniverseTokenExceedBalance.signature) {
-            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenExceedBalance.inputs, log.data, log.topics.slice(1));
-            logger.info(utils.format('Execute failed due to exceeding balance: {0} is needed from {1}, which only has {2}.',
-              decodedLog.value, decodedLog.owner, decodedLog.balance));
-          }
-          else if (log.topics[0] == this.eventOmniverseTokenDeposit.signature) {
+          if (log.topics[0] == this.eventOmniverseTokenDeposit.signature) {
             let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenDeposit.inputs, log.data, log.topics.slice(1));
             logger.info(utils.format('Execute OmniverseTransferFrom successfully: transfer {0} from {1} to {2}.',
               decodedLog.value, decodedLog.from, decodedLog.to));
@@ -140,20 +117,12 @@ class EthereumHandler {
     }
   }
 
-  generalizeData(data) {
+  generalizeData(payload) {
     let ret = {};
-    let opData = this.web3.eth.abi.decodeParameters(['uint8', 'bytes'], data);
+    let opData = this.web3.eth.abi.decodeParameters(['uint8', 'bytes', 'uint256'], payload);
     ret.op = opData[0];
-    if (ret.op == globalDefine.TokenOpType.TRANSFER) {
-      let transferData = this.web3.eth.abi.decodeParameters(['bytes', 'uint256'], opData[1]);
-      ret.to = utils.toByteArray(transferData[0]);
-      ret.amount = transferData[1];
-    }
-    else if (ret.op == globalDefine.TokenOpType.MINT) {
-      let mintData = this.web3.eth.abi.decodeParameters(['bytes', 'uint256'], opData[1]);
-      ret.to = utils.toByteArray(mintData[0]);
-      ret.amount = mintData[1];
-    }
+    ret.exData = utils.toByteArray(opData[1]);
+    ret.amount = opData[2];
 
     return ret;
   }
@@ -173,13 +142,13 @@ class EthereumHandler {
         return;
       }
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
-      let data = this.generalizeData(message.txData.data);
+      let data = this.generalizeData(message.txData.payload);
       let m = {
         nonce: message.txData.nonce,
         chainId: message.txData.chainId,
+        initiateSC: message.txData.initiateSC,
         from: message.txData.from,
-        to: message.txData.to,
-        data: data,
+        payload: data,
         signature: message.txData.signature,
       }
       callback(m, members);
