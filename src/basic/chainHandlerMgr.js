@@ -30,8 +30,8 @@ class chainHandlerMgr {
         for (let i in this.chainHandlers) {
             await this.chainHandlers[i].start((message, members) => {
                 for (let j in members) {
-                    if (i != members[j]) {
-                        this.chainHandlers[members[j]].addMessageToList(message);
+                    if (i != members[j].chainId) {
+                        this.chainHandlers[members[j].chainId].addMessageToList(message);
                     }
                 }
             });
