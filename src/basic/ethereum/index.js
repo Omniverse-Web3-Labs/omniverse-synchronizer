@@ -97,14 +97,19 @@ class EthereumHandler {
       logger.debug('Delayed transaction', ret);
       let receipt = await ethereum.sendTransaction(this.web3, this.chainId, this.skywalkerFungibleContract, 'triggerExecution',
         this.testAccountPrivateKey, []);
-      logger.debug(receipt.logs[0].topics, receipt.logs[0].data);
-      for (let i = 0; i < receipt.logs.length; i++) {
-        let log = receipt.logs[i];
-        if (log.address == this.skywalkerFungibleContract._address) {
-          if (log.topics[0] == this.eventOmniverseTokenTransfer.signature) {
-            let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenTransfer.inputs, log.data, log.topics.slice(1));
-            logger.info(utils.format('Execute OmniverseTransfer successfully: {0} transfer {1} to {2}.',
-              decodedLog.from, decodedLog.value, decodedLog.to));
+      if (!receipt) {
+        logger.debug('receipt', receipt);
+      }
+      else {
+        logger.debug(receipt.logs[0].topics, receipt.logs[0].data);
+        for (let i = 0; i < receipt.logs.length; i++) {
+          let log = receipt.logs[i];
+          if (log.address == this.skywalkerFungibleContract._address) {
+            if (log.topics[0] == this.eventOmniverseTokenTransfer.signature) {
+              let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenTransfer.inputs, log.data, log.topics.slice(1));
+              logger.info(utils.format('Execute OmniverseTransfer successfully: {0} transfer {1} to {2}.',
+                decodedLog.from, decodedLog.value, decodedLog.to));
+            }
           }
         }
       }
@@ -122,6 +127,26 @@ class EthereumHandler {
   }
 
   async start(callback) {
+    // let param1 = '0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782';
+    // let param2 = 3;
+    // let transactionCount = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [param1]);
+    // if (param2 >= transactionCount) {
+    //   console.log('Nonce error', this.chainName, transactionCount);
+    //   return;
+    // }
+    // let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [param1, param2]);
+    // let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
+    // let data = this.generalizeData(message.txData.payload);
+    // let m = {
+    //   nonce: message.txData.nonce,
+    //   chainId: message.txData.chainId,
+    //   initiateSC: message.txData.initiateSC,
+    //   from: message.txData.from,
+    //   payload: data,
+    //   signature: message.txData.signature,
+    // }
+    // callback(m, members);
+    // return;
     this.skywalkerFungibleContract.events.TransactionSent()
     .on("connected", (subscriptionId) => {
       logger.info('connected', subscriptionId);
@@ -129,7 +154,15 @@ class EthereumHandler {
     .on('data', async (event) => {
       logger.debug('event', event);
       // to be continued, decoding is needed here for omniverse
-      console.log(event.returnValues.pk, event.returnValues.nonce);
+      let transactionCount = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [event.returnValues.pk]);     
+      console.log(event.returnValues.pk, event.returnValues.nonce, transactionCount); 
+      if (event.returnValues.nonce >= transactionCount) {
+        console.log('Nonce error', this.chainName, transactionCount);
+        return;
+      }
+      else {
+        console.log('Nonce right', this.chainName);
+      }
       let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
       let data = this.generalizeData(message.txData.payload);
