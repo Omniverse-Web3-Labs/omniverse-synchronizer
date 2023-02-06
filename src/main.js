@@ -24,3 +24,7 @@ async function main() {
 }
 
 main();
+
+process.on('uncaughtException', function (e) {
+  console.log('uncaughtException', e.message);
+});
