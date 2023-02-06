@@ -37,6 +37,7 @@ class EthereumHandler {
     let skywalkerFungibleAbi = JSON.parse(skywalkerFungibleRawData).abi;
     this.skywalkerFungibleContract = new this.web3.eth.Contract(skywalkerFungibleAbi, skywalkerFungibleContractAddress);
     this.chainId = config.get('networks.' + this.chainName + '.chainId');
+    this.payloadCfg = config.get('payload');
     this.messages = [];
 
     for (let i = 0; i < skywalkerFungibleAbi.length; i++) {
@@ -48,16 +49,16 @@ class EthereumHandler {
   }
 
   async addMessageToList(message) {
-    let opData;
-    if (message.payload.op == globalDefine.TokenOpType.TRANSFER) {
-      opData = this.web3.eth.abi.encodeParameters(['uint8', 'bytes', 'uint256'], [message.payload.op, message.payload.exData, message.payload.amount]);
+    let params = [];
+    for (let i = 0; i < this.payloadCfg.keys.length; i++) {
+      if (this.payloadCfg.keys[i] == 'bytes') {
+        params.push(utils.toHexString(message.payload[this.payloadCfg.keys[i]]));
+      }
+      else {
+        params.push(message.payload[this.payloadCfg.keys[i]]);
+      }
     }
-    else if (message.payload.op == globalDefine.TokenOpType.MINT) {
-      opData = this.web3.eth.abi.encodeParameters(['uint8', 'bytes', 'uint256'], [message.payload.op, message.payload.exData, message.payload.amount]);
-    }
-    else if (message.payload.op == globalDefine.TokenOpType.BURN) {
-      opData = this.web3.eth.abi.encodeParameters(['uint8', 'bytes', 'uint256'], [message.payload.op, message.payload.exData, message.payload.amount]);
-    }
+    let opData = this.web3.eth.abi.encodeParameters(this.payloadCfg.types, params);
 
     this.messages.push({
         nonce: message.nonce,
@@ -118,21 +119,29 @@ class EthereumHandler {
 
   generalizeData(payload) {
     let ret = {};
-    let opData = this.web3.eth.abi.decodeParameters(['uint8', 'bytes', 'uint256'], payload);
-    ret.op = opData[0];
-    ret.exData = utils.toByteArray(opData[1]);
-    ret.amount = opData[2];
+    let opData = this.web3.eth.abi.decodeParameters(this.payloadCfg.types, payload);
+    for (let i = 0; i < this.payloadCfg.keys.length; i++) {
+      if (this.payloadCfg.types[i] == 'bytes') {
+        ret[this.payloadCfg.keys[i]] = utils.toByteArray(opData[i]);
+      }
+      else {
+        ret[this.payloadCfg.keys[i]] = opData[i];
+      }
+    }
 
     return ret;
   }
 
   async start(callback) {
     // let param1 = '0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782';
-    // let param2 = 3;
+    // let param2 = 6;
     // let transactionCount = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [param1]);
     // if (param2 >= transactionCount) {
     //   console.log('Nonce error', this.chainName, transactionCount);
     //   return;
+    // }
+    // else {
+    //   console.log('Nonce right', this.chainName);
     // }
     // let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [param1, param2]);
     // let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
@@ -154,16 +163,15 @@ class EthereumHandler {
     .on('data', async (event) => {
       logger.debug('event', event);
       // to be continued, decoding is needed here for omniverse
-      let transactionCount = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [event.returnValues.pk]);     
-      console.log(event.returnValues.pk, event.returnValues.nonce, transactionCount); 
-      if (event.returnValues.nonce >= transactionCount) {
-        console.log('Nonce error', this.chainName, transactionCount);
-        return;
+      console.log(event.returnValues.pk, event.returnValues.nonce);
+      let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'transactionCache', [event.returnValues.pk]);
+      if (message.timestamp != 0 && event.returnValues.nonce == message.txData.nonce) {
+        console.log('Got cached transaction', this.chainName);
       }
       else {
-        console.log('Nonce right', this.chainName);
+        console.log('No cached transaction', this.chainName);
+        return;
       }
-      let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
       let data = this.generalizeData(message.txData.payload);
       let m = {
