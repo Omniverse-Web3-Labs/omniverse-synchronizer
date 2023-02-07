@@ -65,33 +65,39 @@ class SubstrateHandler {
   }
 
   async addMessageToList(message) {
-    let opData;
-    if (message.data.op == globalDefine.TokenOpType.TRANSFER) {
-      let data = TransferTokenOp.enc({
-        to: new Uint8Array(Buffer.from(message.data.to)),
-        amount: BigInt(message.data.amount),
-      });
-      opData = TokenOpcode.enc({
-        op: message.data.op,
-        data: Array.from(data),
-      });
-    } else if (message.data.op == globalDefine.TokenOpType.MINT) {
-      let data = MintTokenOp.enc({
-        to: new Uint8Array(Buffer.from(message.data.to)),
-        amount: BigInt(message.data.amount),
-      });
-      opData = TokenOpcode.enc({
-        op: message.data.op,
-        data: Array.from(data),
-      });
-    }
+    // let opData;
+    // if (message.data.op == globalDefine.TokenOpType.TRANSFER) {
+    //   let data = TransferTokenOp.enc({
+    //     to: new Uint8Array(Buffer.from(message.data.to)),
+    //     amount: BigInt(message.data.amount),
+    //   });
+    //   opData = TokenOpcode.enc({
+    //     op: message.data.op,
+    //     data: Array.from(data),
+    //   });
+    // } else if (message.data.op == globalDefine.TokenOpType.MINT) {
+    //   let data = MintTokenOp.enc({
+    //     to: new Uint8Array(Buffer.from(message.data.to)),
+    //     amount: BigInt(message.data.amount),
+    //   });
+    //   opData = TokenOpcode.enc({
+    //     op: message.data.op,
+    //     data: Array.from(data),
+    //   });
+    // }
+
+    let payload = Fungible.enc({
+      op: message.payload.op,
+      ex_data: message.payload.exData,
+      amount: message.palyalod.amount
+    });
 
     this.messages.push({
       nonce: message.nonce,
-      from: message.from,
-      to: message.to,
       chainId: message.chainId,
-      data: utils.toHexString(Array.from(opData)),
+      initiatorAddress: message.initiateSC,
+      from: message.from,
+      payload: utils.toHexString(Array.from(payload)),
       signature: message.signature,
     });
   }
