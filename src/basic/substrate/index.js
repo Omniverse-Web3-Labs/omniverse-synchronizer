@@ -14,6 +14,12 @@ const TokenOpcode = Struct({
   data: Vector(u8),
 });
 
+const Fungible = Struct({
+  op: u8,
+  ex_data: Vector(u8),
+  amount: u128
+});
+
 const MintTokenOp = Struct({
   to: Bytes(64),
   amount: u128,
@@ -40,7 +46,7 @@ class SubstrateHandler {
     this.network = config.get('networks.' + this.chainName);
     const wsProvider = new WsProvider(this.network.nodeAddress);
     this.api = await ApiPromise.create({ provider: wsProvider });
-    this.tokenId = config.get('tokenId');
+    this.tokenId = config.get('networks.' + this.chainName + '.tokenId');
 
     // key
     let secret = JSON.parse(fs.readFileSync(config.get('secret')));
@@ -113,7 +119,23 @@ class SubstrateHandler {
     }
   }
 
-  async tryTrigger() {}
+  async tryTrigger() {
+    let [delayedExecutingIndex, delayedIndex] = (await substrate.contractCall(
+      this.api,
+      'assets',
+      'delayedIndex',
+      []
+    )).toJSON();
+    if (delayedExecutingIndex < delayedIndex) {
+      await substrate.sendTransaction(
+        this.api,
+        'assets',
+        'triggerExecution',
+        this.sender,
+        []
+      );
+    }
+  }
 
   async getOmniverseEvent(blockHash, callback) {
     const apiAt = await this.api.at(blockHash);
@@ -158,9 +180,19 @@ class SubstrateHandler {
             return;
           }
           console.log(m);
-          let data = this.generalizeData(m);
-          m.data = data;
-          callback(m, tokenInfo.unwrap().members.toHuman());
+          let payload = this.generalizeData(m);
+          m.payload = payload;
+          m.initiateSC = m.initiatorAddress;
+          delete m.initiatorAddress;
+          let mb = tokenInfo.unwrap().members.toHuman();
+          let members = [];
+          for (let member of mb) {
+            members.push({
+              chainId: member[0],
+              contractAddr: member[1]
+            })
+          } 
+          callback(m, members);
         }
       });
     });
@@ -175,9 +207,13 @@ class SubstrateHandler {
   */
   generalizeData(data) {
     let ret = {};
-    ret.op = Number(data.opType);
-    ret.to = utils.toByteArray(data.opData);
-    ret.amount = data.amount
+    // ret.op = Number(data.opType);
+    // ret.exData = utils.toByteArray(data.opData);
+    // ret.amount = data.amount
+    let fungible = Fungible.dec(data.payload);
+    ret.op = fungible.op;
+    ret.exData = Array.from(fungible.ex_data);
+    ret.amount = fungible.amount;
     // let ret.op = data.
     // let tokenOp = TokenOpcode.dec(data);
     // ret.op = tokenOp.op;
