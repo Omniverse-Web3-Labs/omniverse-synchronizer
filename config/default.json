@@ -22,14 +22,14 @@
       "compatibleChain": "ethereum",
       "omniverseChainId": 0
     },
-    "MOCK": {
-      "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
-      "chainId": 97,
-      "skywalkerFungibleContractAddress": "0x646fE2Cfd2e2942aA67C74DAe58BD1410E2c622E",
-      "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
-      "compatibleChain": "ethereum",
-      "omniverseChainId": 10000
-    },
+    // "MOCK": {
+    //   "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
+    //   "chainId": 97,
+    //   "skywalkerFungibleContractAddress": "0x646fE2Cfd2e2942aA67C74DAe58BD1410E2c622E",
+    //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
+    //   "compatibleChain": "ethereum",
+    //   "omniverseChainId": 10000
+    // },
     // "MOONBASEALPHA": {
     //   "nodeAddress": "wss://moonbeam-alpha.api.onfinality.io/public-ws",
     //   "chainId": 1287,
@@ -37,11 +37,11 @@
     //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
     //   "compatibleChain": "ethereum"
     // },
-    // "SUBSTRATE": {
-    //   "nodeAddress": "ws://127.0.0.1:9944",
-    //   "compatibleChain": "substrate",
-    //   "tokenId": "X",
-    //   "omniverseChainId": 1
-    // }
+    "SUBSTRATE": {
+      "nodeAddress": "ws://3.122.90.113:9944",
+      "compatibleChain": "substrate",
+      "tokenId": "X",
+      "omniverseChainId": 1
+    }
   }
 }

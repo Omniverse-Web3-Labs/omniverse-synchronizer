@@ -89,7 +89,7 @@ class SubstrateHandler {
     let payload = Fungible.enc({
       op: message.payload.op,
       ex_data: message.payload.exData,
-      amount: message.palyalod.amount
+      amount: message.payload.amount
     });
 
     this.messages.push({
