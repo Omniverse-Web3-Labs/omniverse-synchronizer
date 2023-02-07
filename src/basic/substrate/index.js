@@ -89,7 +89,7 @@ class SubstrateHandler {
     let payload = Fungible.enc({
       op: message.payload.op,
       ex_data: message.payload.exData,
-      amount: message.payload.amount
+      amount: BigInt(message.payload.amount)
     });
 
     this.messages.push({
@@ -109,7 +109,7 @@ class SubstrateHandler {
         this.api,
         'omniverseProtocol',
         'transactionCount',
-        message.from
+        [message.from, this.tokenId]
       );
       if (nonce == message.nonce) {
         await substrate.sendTransaction(
