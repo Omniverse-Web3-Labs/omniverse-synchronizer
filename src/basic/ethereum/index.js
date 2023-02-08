@@ -26,6 +26,7 @@ class EthereumHandler {
         onTimeout: false
       }
     };
+    this.messageBlockHeights = [];
     let provider = new Web3.providers.WebsocketProvider(config.get('networks.' + this.chainName + '.nodeAddress'), options);
     this.web3 = new Web3(provider);
     this.web3.eth.handleRevert = true;
@@ -132,36 +133,58 @@ class EthereumHandler {
     return ret;
   }
 
-  async start(callback) {
-    let param1 = '0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782';
-    let param2 = 0;
-    let transactionCount = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [param1]);
-    if (param2 >= transactionCount) {
-      console.log('Nonce error', this.chainName, transactionCount);
+  async messageFinalized(from, nonce) {
+    let height;
+    for (let i = 0; i < this.messageBlockHeights.length; i++) {
+      if (this.messageBlockHeights[i].from == from && this.messageBlockHeights[i].nonce == nonce) {
+        height = this.messageBlockHeights[i].height;
+        this.messageBlockHeights.splice(i, 1);
+        break;
+      }
+    }
+
+    if (!height) {
+      logger.error('The block height should not be null');
       return;
     }
-    else {
-      console.log('Nonce right', this.chainName);
+
+    global.stateDB.setValue(this.chainName, height);
+  }
+
+  async start(cbHandler) {
+    // let param1 = '0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782';
+    // let param2 = 8;
+    // let transactionCount = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [param1]);
+    // if (param2 >= transactionCount) {
+    //   console.log('Nonce error', this.chainName, transactionCount);
+    //   return;
+    // }
+    // else {
+    //   console.log('Nonce right', this.chainName);
+    // }
+    // let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [param1, param2]);
+    // let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
+    // let data = this.generalizeData(message.txData.payload);
+    // let m = {
+    //   nonce: message.txData.nonce,
+    //   chainId: message.txData.chainId,
+    //   initiateSC: message.txData.initiateSC,
+    //   from: message.txData.from,
+    //   payload: data,
+    //   signature: message.txData.signature,
+    // }
+    // cbHandler.onMessageSent(m, members);
+    // return;
+    let fromBlock = stateDB.getValue(this.chainName);
+    if (!fromBlock) {
+      fromBlock = 'latest';
     }
-    let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [param1, param2]);
-    let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
-    let data = this.generalizeData(message.txData.payload);
-    let m = {
-      nonce: message.txData.nonce,
-      chainId: message.txData.chainId,
-      initiateSC: message.txData.initiateSC,
-      from: message.txData.from,
-      payload: data,
-      signature: message.txData.signature,
-    }
-    callback(m, members);
-    return;
     this.skywalkerFungibleContract.events.TransactionSent()
     .on("connected", (subscriptionId) => {
-      logger.info('connected', subscriptionId);
+      logger.info('TransactionSent connected', subscriptionId);
     })
     .on('data', async (event) => {
-      logger.debug('event', event);
+      logger.debug('TransactionSent event', event);
       // to be continued, decoding is needed here for omniverse
       console.log(event.returnValues.pk, event.returnValues.nonce);
       let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'transactionCache', [event.returnValues.pk]);
@@ -182,17 +205,42 @@ class EthereumHandler {
         payload: data,
         signature: message.txData.signature,
       }
-      callback(m, members);
+      this.messageBlockHeights.push({
+        from: event.returnValues.pk,
+        nonce: event.returnValues.nonce,
+        height: event.blockNumber
+      });
+      cbHandler.onMessageSent(m, members);
     })
     .on('changed', (event) => {
       // remove event from local database
-      logger.info('changed');
+      logger.info('TransactionSent changed');
       logger.debug(event);
     })
     .on('error', (error, receipt) => {
       // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-      logger.info('error', this.chainName, error);
-      logger.info('receipt', receipt);
+      logger.info('TransactionSent error', this.chainName, error);
+      logger.info('TransactionSent receipt', receipt);
+    });
+
+    this.skywalkerFungibleContract.events.TransactionExecuted()
+    .on("connected", (subscriptionId) => {
+      logger.info('TransactionExecuted connected', subscriptionId);
+    })
+    .on('data', async (event) => {
+      logger.debug('TransactionExecuted event', event);
+      // to be continued, decoding is needed here for omniverse
+      cbHandler.onMessageExecuted(event.returnValues.pk, event.returnValues.nonce);
+    })
+    .on('changed', (event) => {
+      // remove event from local database
+      logger.info('TransactionExecuted changed');
+      logger.debug(event);
+    })
+    .on('error', (error, receipt) => {
+      // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
+      logger.info('TransactionExecuted error', this.chainName, error);
+      logger.info('TransactionExecuted receipt', receipt);
     });
   }
 

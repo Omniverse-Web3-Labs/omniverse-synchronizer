@@ -2,9 +2,11 @@ const chainHandlerMgr = require('./basic/chainHandlerMgr');
 global.config = require('config');
 global.logger = require('./utils/logger');
 global.utils = require('./utils/utils');
+global.stateDB = require('./utils/stateDB');
 
 async function init() {
   await chainHandlerMgr.init();
+  stateDB.init(config.get('stateDB'));
 }
 
 async function main() {
