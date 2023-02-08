@@ -38,6 +38,7 @@ class EthereumHandler {
     let skywalkerFungibleAbi = JSON.parse(skywalkerFungibleRawData).abi;
     this.skywalkerFungibleContract = new this.web3.eth.Contract(skywalkerFungibleAbi, skywalkerFungibleContractAddress);
     this.chainId = config.get('networks.' + this.chainName + '.chainId');
+    this.omniverseChainId = config.get('networks.' + this.chainName + '.omniverseChainId');
     this.payloadCfg = config.get('payload');
     this.messages = [];
 
@@ -84,11 +85,26 @@ class EthereumHandler {
           break;
         }
         else {
-          log.info('Cooling down');
+          logger.info('Cooling down');
         }
       }
       else {
         console.log('Caching');
+      }
+    }
+  }
+
+  async update() {
+    let blockNumber = await this.web3.eth.getBlockNumber();
+    if (this.messageBlockHeights.length == 0) {
+      stateDB.setValue(this.chainName, blockNumber);
+    }
+    else {
+      if (this.messageBlockHeights[0].height > blockNumber) {
+        stateDB.setValue(self.chainName, blockNumber);
+      }
+      else {
+        logger.info('Message waiting to be finalized');
       }
     }
   }
@@ -148,12 +164,12 @@ class EthereumHandler {
       return;
     }
 
-    global.stateDB.setValue(this.chainName, height);
+    global.stateDB.setValue(this.chainName, height + 1);
   }
 
   async start(cbHandler) {
     // let param1 = '0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782';
-    // let param2 = 8;
+    // let param2 = 2;
     // let transactionCount = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [param1]);
     // if (param2 >= transactionCount) {
     //   console.log('Nonce error', this.chainName, transactionCount);
@@ -173,13 +189,19 @@ class EthereumHandler {
     //   payload: data,
     //   signature: message.txData.signature,
     // }
-    // cbHandler.onMessageSent(m, members);
+    // cbHandler.onMessageSent(this.omniverseChainId, m, members);
     // return;
     let fromBlock = stateDB.getValue(this.chainName);
     if (!fromBlock) {
       fromBlock = 'latest';
     }
-    this.skywalkerFungibleContract.events.TransactionSent()
+    else {
+      fromBlock += 1;
+    }
+    logger.info(this.chainName, 'Block height', fromBlock);
+    this.skywalkerFungibleContract.events.TransactionSent({
+      fromBlock: fromBlock
+    })
     .on("connected", (subscriptionId) => {
       logger.info('TransactionSent connected', subscriptionId);
     })
@@ -210,7 +232,7 @@ class EthereumHandler {
         nonce: event.returnValues.nonce,
         height: event.blockNumber
       });
-      cbHandler.onMessageSent(m, members);
+      cbHandler.onMessageSent(this.omniverseChainId, m, members);
     })
     .on('changed', (event) => {
       // remove event from local database
@@ -230,7 +252,7 @@ class EthereumHandler {
     .on('data', async (event) => {
       logger.debug('TransactionExecuted event', event);
       // to be continued, decoding is needed here for omniverse
-      cbHandler.onMessageExecuted(event.returnValues.pk, event.returnValues.nonce);
+      cbHandler.onMessageExecuted(this.omniverseChainId, event.returnValues.pk, event.returnValues.nonce);
     })
     .on('changed', (event) => {
       // remove event from local database

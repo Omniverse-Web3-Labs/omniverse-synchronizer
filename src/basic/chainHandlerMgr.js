@@ -30,7 +30,7 @@ class chainHandlerMgr {
         return this.chainHandlers[name_];
     }
 
-    onMessageSent(message, members) {
+    onMessageSent(chainId, message, members) {
         let task = {
             fromChain: chainId,
             members: members,
@@ -49,6 +49,11 @@ class chainHandlerMgr {
         let task = this.messageObserver[from + nonce];
         if (!task) {
             logger.error('This case should not appear');
+            return;
+        }
+
+        if (chainId == task.fromChain) {
+            logger.info('Executed on original chain');
             return;
         }
 
@@ -79,6 +84,7 @@ class chainHandlerMgr {
     async loop() {
         await this.pushMessages();
         await this.tryTrigger();
+        await this.update();
     }
 
     async pushMessages() {
@@ -90,6 +96,12 @@ class chainHandlerMgr {
     async tryTrigger() {
         for (let i in this.chainHandlers) {
             await this.chainHandlers[i].tryTrigger();
+        }
+    }
+
+    async update() {
+        for (let i in this.chainHandlers) {
+            await this.chainHandlers[i].update();
         }
     }
 }
