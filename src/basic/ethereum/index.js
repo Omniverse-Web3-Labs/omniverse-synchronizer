@@ -104,7 +104,7 @@ class EthereumHandler {
         stateDB.setValue(self.chainName, blockNumber);
       }
       else {
-        logger.info('Message waiting to be finalized');
+        logger.info('Message waiting to be finalized', this.messageBlockHeights[0].nonce);
       }
     }
   }
