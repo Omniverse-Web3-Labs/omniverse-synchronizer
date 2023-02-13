@@ -168,29 +168,6 @@ class EthereumHandler {
   }
 
   async start(cbHandler) {
-    // let param1 = '0xfb73e1e37a4999060a9a9b1e38a12f8a7c24169caa39a2fb304dc3506dd2d797f8d7e4dcd28692ae02b7627c2aebafb443e9600e476b465da5c4dddbbc3f2782';
-    // let param2 = 7;
-    // let transactionCount = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [param1]);
-    // if (param2 >= transactionCount) {
-    //   console.log('Nonce error', this.chainName, transactionCount);
-    //   return;
-    // }
-    // else {
-    //   console.log('Nonce right', this.chainName);
-    // }
-    // let message = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [param1, param2]);
-    // let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
-    // let data = this.generalizeData(message.txData.payload);
-    // let m = {
-    //   nonce: message.txData.nonce,
-    //   chainId: message.txData.chainId,
-    //   initiateSC: message.txData.initiateSC,
-    //   from: message.txData.from,
-    //   payload: data,
-    //   signature: message.txData.signature,
-    // }
-    // cbHandler.onMessageSent(this.omniverseChainId, m, members);
-    // return;
     let fromBlock = stateDB.getValue(this.chainName);
     let blockNumber = await this.web3.eth.getBlockNumber();
     if (!fromBlock) {
@@ -218,8 +195,14 @@ class EthereumHandler {
         console.log('Got cached transaction', this.chainName);
       }
       else {
-        console.log('No cached transaction', this.chainName);
-        return;
+        let messageCount = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionCount', [event.returnValues.pk]);
+        if (messageCount > event.returnValues.nonce) {
+          message = await ethereum.contractCall(this.skywalkerFungibleContract, 'getTransactionData', [event.returnValues.pk, event.returnValues.nonce]);
+        }
+        else {
+          console.log('No transaction got', this.chainName);
+          return;
+        }
       }
       let members = await ethereum.contractCall(this.skywalkerFungibleContract, 'getMembers', []);
       let data = this.generalizeData(message.txData.payload);
