@@ -5,6 +5,8 @@ module.exports = {
         BURN: 2,
     },
 
+    LogRange: 5000,
+
     ErrorCode: {
         SUCCESS: 0,
         GET_MESSAGE_ERROR: 1,
