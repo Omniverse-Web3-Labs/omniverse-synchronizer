@@ -21,8 +21,8 @@ class EthereumHandler {
     const options = {
       reconnect: {
         auto: true,
-        delay: 1000, // ms
-        maxAttempts: 5,
+        delay: 5000, // ms
+        maxAttempts: 10,
         onTimeout: false
       }
     };
