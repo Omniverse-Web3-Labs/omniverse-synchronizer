@@ -2,6 +2,7 @@
   "scanInterval": 10,
   "logLevel": "debug",
   "secret": "config/.secret",
+  "stateDB": ".state",
   "payload": {
     "keys": ["op", "exData", "amount"],
     "types": ["uint8", "bytes", "uint256"]
@@ -17,19 +18,19 @@
     "BSCTEST": {
       "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
       "chainId": 97,
-      "skywalkerFungibleContractAddress": "0xf9E5f797f88a8B42ad9960f3411145857cf1109f",
+      "skywalkerFungibleContractAddress": "0x0f6CE1D0cAa7c25E9698fbC7a1Ce9F09fe347292",
       "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
       "compatibleChain": "ethereum",
       "omniverseChainId": 0
     },
-    // "MOCK": {
-    //   "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
-    //   "chainId": 97,
-    //   "skywalkerFungibleContractAddress": "0x646fE2Cfd2e2942aA67C74DAe58BD1410E2c622E",
-    //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
-    //   "compatibleChain": "ethereum",
-    //   "omniverseChainId": 10000
-    // },
+    "MOCK": {
+      "nodeAddress": "wss://chaotic-special-mansion.bsc-testnet.discover.quiknode.pro/23e0db26b2680c014568edec91e81d294d129cd2/",
+      "chainId": 97,
+      "skywalkerFungibleContractAddress": "0xD85eEE6e8517Ee9f79615c482c7ffa0bE4638161",
+      "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
+      "compatibleChain": "ethereum",
+      "omniverseChainId": 10000
+    },
     // "MOONBASEALPHA": {
     //   "nodeAddress": "wss://moonbeam-alpha.api.onfinality.io/public-ws",
     //   "chainId": 1287,
@@ -37,11 +38,11 @@
     //   "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
     //   "compatibleChain": "ethereum"
     // },
-    "SUBSTRATE": {
-      "nodeAddress": "ws://3.122.90.113:9944",
-      "compatibleChain": "substrate",
-      "tokenId": "X",
-      "omniverseChainId": 1
-    }
+    // "SUBSTRATE": {
+    //   "nodeAddress": "ws://3.122.90.113:9944",
+    //   "compatibleChain": "substrate",
+    //   "tokenId": "H",
+    //   "omniverseChainId": 1
+    // }
   }
 }
