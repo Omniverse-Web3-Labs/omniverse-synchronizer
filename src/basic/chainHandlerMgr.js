@@ -4,6 +4,10 @@ const config = require('config');
 class chainHandlerMgr {
     constructor() {
         this.chainHandlers = {};
+        /* After a message is initiated, and transported across all the Omniverse DLT,
+        we must trace the executing result on each chain
+        */
+        this.messageObserver = {};
     }
 
     async init() {
@@ -26,21 +30,61 @@ class chainHandlerMgr {
         return this.chainHandlers[name_];
     }
 
+    onMessageSent(chainId, message, members) {
+        let task = {
+            fromChain: chainId,
+            members: members,
+            taskMembers: [],
+        }
+        for (let j in members) {
+            if (chainId != members[j].chainId) {
+                this.chainHandlers[members[j].chainId].addMessageToList(message);
+                task.taskMembers.push(members[j].chainId);
+            }
+        }
+        this.messageObserver[message.from + message.nonce] = task;
+    }
+
+    onMessageExecuted(chainId, from, nonce) {
+        let task = this.messageObserver[from + nonce];
+        if (!task) {
+            logger.error('This case should not appear');
+            return;
+        }
+
+        if (chainId == task.fromChain) {
+            logger.info('Executed on original chain');
+            return;
+        }
+
+        let found = false;
+        for (let i = 0; i < task.taskMembers.length; i++) {
+            if (task.taskMembers[i] == chainId) {
+                task.taskMembers.splice(i, 1);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            logger.error(utils.format('Task for {0} not exists', chainId));
+        }
+
+        if (task.taskMembers.length == 0) {
+            this.chainHandlers[task.fromChain].messageFinalized(from, nonce);
+        }
+    }
+
     async run() {
         for (let i in this.chainHandlers) {
-            await this.chainHandlers[i].start((message, members) => {
-                for (let j in members) {
-                    if (i != members[j]) {
-                        this.chainHandlers[members[j]].addMessageToList(message);
-                    }
-                }
-            });
+            await this.chainHandlers[i].start(this);
         }
     }
 
     async loop() {
         await this.pushMessages();
         await this.tryTrigger();
+        await this.update();
     }
 
     async pushMessages() {
@@ -52,6 +96,12 @@ class chainHandlerMgr {
     async tryTrigger() {
         for (let i in this.chainHandlers) {
             await this.chainHandlers[i].tryTrigger();
+        }
+    }
+
+    async update() {
+        for (let i in this.chainHandlers) {
+            await this.chainHandlers[i].update();
         }
     }
 }
