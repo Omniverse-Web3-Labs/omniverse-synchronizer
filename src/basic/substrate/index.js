@@ -57,18 +57,7 @@ class SubstrateHandler {
       this.sender.decodePkcs8(secret[this.chainName].password);
     }
 
-    this.messages = [
-      {
-        nonce: 4,
-        chainId: 97,
-        initiatorAddress: '0f6CE1D0cAa7c25E9698fbC7a1Ce9F09fe347292',
-        from: '0xf4d2bbf5b74fb8f4f00b5c80da8d5340883bb77b7fa94cf22b6f3635f951fbd99dec9d6e642f25d03df00d222a3e365136e8f071c38a59294ccbaca3359ee152',
-        payload:
-          '0x010101f4d2bbf5b74fb8f4f00b5c80da8d5340883bb77b7fa94cf22b6f3635f951fbd99dec9d6e642f25d03df00d222a3e365136e8f071c38a59294ccbaca3359ee152e8030000000000000000000000000000',
-        signature:
-          '0xc4fafbbc05122ccc5e598433bb07abd31f38dba11f922f91e36d7a584f23368b07d21163177f5d97c23c9b48828c1100a536cbe80097b16e7b531516a4e967ec1b',
-      },
-    ];
+    this.messages = [];
   }
 
   async addMessageToList(message) {
@@ -152,7 +141,6 @@ class SubstrateHandler {
         // Extract the phase, event and the event types
         const { event } = record;
         // Show what we are busy with
-
         this.pallets.forEach(async (palletName) => {
           if (event.section == palletName) {
             if (event.method == 'TransactionSent') {
