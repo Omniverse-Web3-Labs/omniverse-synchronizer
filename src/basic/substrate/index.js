@@ -9,24 +9,15 @@ const logger = require('../../utils/logger.js');
 const globalDefine = require('../../utils/globalDefine.js');
 const { u8, u128, Struct, Vector, Bytes } = require('scale-ts');
 
-const TokenOpcode = Struct({
-  op: u8,
-  data: Vector(u8),
-});
-
 const Fungible = Struct({
   op: u8,
   ex_data: Vector(u8),
   amount: u128,
 });
 
-const MintTokenOp = Struct({
-  to: Bytes(64),
-  amount: u128,
-});
-
-const TransferTokenOp = Struct({
-  to: Bytes(64),
+const Assets = Struct({
+  op: u8,
+  exData: Vector(u8),
   amount: u128,
 });
 
@@ -50,7 +41,8 @@ class SubstrateHandler {
     );
     const wsProvider = new WsProvider(this.network.nodeAddress);
     this.api = await ApiPromise.create({ provider: wsProvider });
-    this.tokenId = config.get('networks.' + this.chainName + '.tokenId');
+    // this.tokenId = config.get('networks.' + this.chainName + '.tokenId');
+    this.pallets = config.get('networks.' + this.chainName + '.pallets');
 
     // key
     let secret = JSON.parse(fs.readFileSync(config.get('secret')));
@@ -65,35 +57,25 @@ class SubstrateHandler {
       this.sender.decodePkcs8(secret[this.chainName].password);
     }
 
-    this.messages = [];
+    this.messages = [
+      {
+        nonce: 4,
+        chainId: 97,
+        initiatorAddress: '0f6CE1D0cAa7c25E9698fbC7a1Ce9F09fe347292',
+        from: '0xf4d2bbf5b74fb8f4f00b5c80da8d5340883bb77b7fa94cf22b6f3635f951fbd99dec9d6e642f25d03df00d222a3e365136e8f071c38a59294ccbaca3359ee152',
+        payload:
+          '0x010101f4d2bbf5b74fb8f4f00b5c80da8d5340883bb77b7fa94cf22b6f3635f951fbd99dec9d6e642f25d03df00d222a3e365136e8f071c38a59294ccbaca3359ee152e8030000000000000000000000000000',
+        signature:
+          '0xc4fafbbc05122ccc5e598433bb07abd31f38dba11f922f91e36d7a584f23368b07d21163177f5d97c23c9b48828c1100a536cbe80097b16e7b531516a4e967ec1b',
+      },
+    ];
   }
 
   async addMessageToList(message) {
-    // let opData;
-    // if (message.data.op == globalDefine.TokenOpType.TRANSFER) {
-    //   let data = TransferTokenOp.enc({
-    //     to: new Uint8Array(Buffer.from(message.data.to)),
-    //     amount: BigInt(message.data.amount),
-    //   });
-    //   opData = TokenOpcode.enc({
-    //     op: message.data.op,
-    //     data: Array.from(data),
-    //   });
-    // } else if (message.data.op == globalDefine.TokenOpType.MINT) {
-    //   let data = MintTokenOp.enc({
-    //     to: new Uint8Array(Buffer.from(message.data.to)),
-    //     amount: BigInt(message.data.amount),
-    //   });
-    //   opData = TokenOpcode.enc({
-    //     op: message.data.op,
-    //     data: Array.from(data),
-    //   });
-    // }
-
-    let payload = Fungible.enc({
+    let payload = Assets.enc({
       op: message.payload.op,
       ex_data: message.payload.exData,
-      amount: BigInt(message.payload.amount),
+      quantity: BigInt(message.payload.amount),
     });
 
     this.messages.push({
@@ -108,40 +90,55 @@ class SubstrateHandler {
 
   async pushMessages() {
     for (let i = 0; i < this.messages.length; i++) {
-      let message = this.messages[i];
-      let nonce = await substrate.contractCall(
-        this.api,
-        'omniverseProtocol',
-        'transactionCount',
-        [message.from, this.tokenId]
-      );
-      if (nonce == message.nonce) {
-        await substrate.sendTransaction(
-          this.api,
-          'assets',
-          'sendTransaction',
-          this.sender,
-          [this.tokenId, message]
-        );
-        this.messages.splice(i, 1);
-        break;
+      for (let palletName of this.pallets) {
+        let message = this.messages[i];
+        let tokenId = (
+          await substrate.contractCall(
+            this.api,
+            palletName,
+            'tokenIdofMember',
+            [[message.chainId, message.initiatorAddress]]
+          )
+        ).toHuman();
+        if (tokenId) {
+          let nonce = await substrate.contractCall(
+            this.api,
+            'omniverseProtocol',
+            'transactionCount',
+            [message.from, palletName, tokenId]
+          );
+          // nonce = nonce.toJSON();
+          if (nonce == message.nonce) {
+            await substrate.sendTransaction(
+              this.api,
+              palletName,
+              'sendTransaction',
+              this.sender,
+              [tokenId, message]
+            );
+            this.messages.splice(i, 1);
+            return;
+          }
+        }
       }
     }
   }
 
   async tryTrigger() {
-    let [delayedExecutingIndex, delayedIndex] = (
-      await substrate.contractCall(this.api, 'assets', 'delayedIndex', [])
-    ).toJSON();
-    if (delayedExecutingIndex < delayedIndex) {
-      await substrate.sendTransaction(
-        this.api,
-        'assets',
-        'triggerExecution',
-        this.sender,
-        []
-      );
-    }
+    this.pallets.forEach(async (palletName) => {
+      let [delayedExecutingIndex, delayedIndex] = (
+        await substrate.contractCall(this.api, palletName, 'delayedIndex', [])
+      ).toJSON();
+      if (delayedExecutingIndex < delayedIndex) {
+        await substrate.sendTransaction(
+          this.api,
+          palletName,
+          'triggerExecution',
+          this.sender,
+          []
+        );
+      }
+    });
   }
 
   async getOmniverseEvent(blockHash, cbHandler) {
@@ -155,60 +152,56 @@ class SubstrateHandler {
         // Extract the phase, event and the event types
         const { event } = record;
         // Show what we are busy with
-        if (event.section == 'assets') {
-          if (event.method == 'TransactionSent') {
-            // event.data.forEach((data, index) => {
-            // });
-            // console.log(`${event.section}:${event.method}`);
-            // console.log(event.data.toJSON());
-            let message = await substrate.contractCall(
-              this.api,
-              'omniverseProtocol',
-              'transactionRecorder',
-              [
-                event.data[0].toHuman(),
-                [event.data[1].toHuman(), event.data[2].toHuman()],
-              ]
-            );
-            let tokenInfo = await substrate.contractCall(
-              this.api,
-              'assets',
-              'tokensInfo',
-              [this.tokenId]
-            );
-            // console.log('message', message.unwrap(), tokenInfo.unwrap());
-            let m = message.unwrap().txData.toJSON();
-            if (event.data[1].toHuman() != this.tokenId) {
-              console.log('Another destination');
-              return;
-            }
-            let payload = this.generalizeData(m);
-            m.payload = payload;
-            m.initiateSC = m.initiatorAddress;
-            delete m.initiatorAddress;
-            let mb = tokenInfo.unwrap().members.toHuman();
-            let members = [];
-            for (let member of mb) {
-              members.push({
-                chainId: member[0],
-                contractAddr: member[1],
+
+        this.pallets.forEach(async (palletName) => {
+          if (event.section == palletName) {
+            if (event.method == 'TransactionSent') {
+              let pk = event.data[0].toHuman();
+              let tokenId = event.data[1].toHuman();
+              let nonce = event.data[2].toHuman();
+              let message = await substrate.contractCall(
+                this.api,
+                'omniverseProtocol',
+                'transactionRecorder',
+                [pk, palletName, tokenId, nonce]
+              );
+
+              let tokenInfo = await substrate.contractCall(
+                this.api,
+                palletName,
+                'tokensInfo',
+                [tokenId]
+              );
+
+              let m = message.unwrap().txData.toJSON();
+              let payload = this.generalizeData(m);
+              m.payload = payload;
+              m.initiateSC = m.initiatorAddress;
+              delete m.initiatorAddress;
+              let mb = tokenInfo.unwrap().members.toHuman();
+              let members = [];
+              for (let member of mb) {
+                members.push({
+                  chainId: member[0],
+                  contractAddr: member[1],
+                });
+              }
+              this.messageBlockHeights.push({
+                from: m.from,
+                nonce: m.nonce,
+                height: blockNumber,
               });
+              cbHandler.onMessageSent(this.omniverseChainId, m, members);
+            } else if (event.method == 'TransactionExecuted') {
+              logger.debug('TransactionExecuted event', event.data.toJSON());
+              cbHandler.onMessageExecuted(
+                this.omniverseChainId,
+                event.data[0].toHuman(),
+                event.data[1].toHuman()
+              );
             }
-            this.messageBlockHeights.push({
-              from: m.from,
-              nonce: m.nonce,
-              height: blockNumber,
-            });
-            cbHandler.onMessageSent(this.omniverseChainId, m, members);
-          } else if (event.method == 'TransactionExecuted') {
-            logger.debug('TransactionExecuted event', event.data.toJSON());
-            cbHandler.onMessageExecuted(
-              this.omniverseChainId,
-              event.data[0].toHuman(),
-              event.data[1].toHuman()
-            );
           }
-        }
+        });
       });
     });
   }
@@ -243,26 +236,10 @@ class SubstrateHandler {
   */
   generalizeData(data) {
     let ret = {};
-    // ret.op = Number(data.opType);
-    // ret.exData = utils.toByteArray(data.opData);
-    // ret.amount = data.amount
     let fungible = Fungible.dec(data.payload);
     ret.op = fungible.op;
     ret.exData = Array.from(fungible.ex_data);
     ret.amount = fungible.amount;
-    // let ret.op = data.
-    // let tokenOp = TokenOpcode.dec(data);
-    // ret.op = tokenOp.op;
-    // if (Number(data.opType) == globalDefine.TokenOpType.MINT) {
-    //   let mintOp = MintTokenOp.dec(new Uint8Array(tokenOp.data));
-    //   ret.to = Array.from(mintOp.to);
-    //   ret.amount = mintOp.amount;
-    // } else if (Number(data.opType) == globalDefine.TokenOpType.TRANSFER) {
-    //   let transferOp = TransferTokenOp.dec(new Uint8Array(tokenOp.data));
-    //   ret.to = Array.from(transferOp.to);
-    //   ret.amount = transferOp.amount;
-    // }
-
     return ret;
   }
 
@@ -278,9 +255,13 @@ class SubstrateHandler {
     let fromBlock = stateDB.getValue(this.chainName);
     let currentBlock = await this.api.rpc.chain.getBlock();
     let currentBlockNumber = currentBlock.block.header.number.toJSON();
-    console.log(currentBlockNumber - fromBlock )
+    console.log(currentBlockNumber - fromBlock);
     if (fromBlock && currentBlockNumber - fromBlock < 256) {
-      await this.processPastOmniverseEvent(fromBlock, currentBlockNumber, cbHandler);
+      await this.processPastOmniverseEvent(
+        fromBlock,
+        currentBlockNumber,
+        cbHandler
+      );
     }
     await this.api.rpc.chain.subscribeNewHeads(async (header) => {
       console.log(`\nChain is at block: #${header.number}`);
