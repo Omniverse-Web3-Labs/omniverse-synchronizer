@@ -41,7 +41,7 @@
     // "SUBSTRATE": {
     //   "nodeAddress": "ws://3.122.90.113:9944",
     //   "compatibleChain": "substrate",
-    //   "tokenId": "H",
+    //   "pallets": ["assets", "uniques"],
     //   "omniverseChainId": 1
     // }
   }
