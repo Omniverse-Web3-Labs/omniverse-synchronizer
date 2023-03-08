@@ -9,12 +9,6 @@ const logger = require('../../utils/logger.js');
 const globalDefine = require('../../utils/globalDefine.js');
 const { u8, u128, Struct, Vector, Bytes } = require('scale-ts');
 
-const Fungible = Struct({
-  op: u8,
-  ex_data: Vector(u8),
-  amount: u128,
-});
-
 const Assets = Struct({
   op: u8,
   exData: Vector(u8),
@@ -63,8 +57,8 @@ class SubstrateHandler {
   async addMessageToList(message) {
     let payload = Assets.enc({
       op: message.payload.op,
-      ex_data: message.payload.exData,
-      quantity: BigInt(message.payload.amount),
+      exData: message.payload.exData,
+      amount: BigInt(message.payload.amount),
     });
 
     this.messages.push({
@@ -224,10 +218,10 @@ class SubstrateHandler {
   */
   generalizeData(data) {
     let ret = {};
-    let fungible = Fungible.dec(data.payload);
-    ret.op = fungible.op;
-    ret.exData = Array.from(fungible.ex_data);
-    ret.amount = fungible.amount;
+    let assets = Assets.dec(data.payload);
+    ret.op = assets.op;
+    ret.exData = Array.from(assets.exData);
+    ret.amount = assets.amount;
     return ret;
   }
 
