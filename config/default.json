@@ -11,8 +11,8 @@
     "GOERLI": {
       "nodeAddress": "wss://goerli.infura.io/ws/v3/94ebec44ffc34501898dd5dccf387f81",
       "chainId": 5,
-      "skywalkerFungibleContractAddress": "0xB38d75754d799e4f07bb9EE774B9b2DAe3dB0E56",
-      "skywalkerFungibleAbiPath": "./res/SkywalkerFungible.json",
+      "omniverseContractAddress": "0xB38d75754d799e4f07bb9EE774B9b2DAe3dB0E56",
+      "omniverseContractAbiPath": "./res/SkywalkerFungible.json",
       "compatibleChain": "ethereum",
       "omniverseChainId": 2
     },
