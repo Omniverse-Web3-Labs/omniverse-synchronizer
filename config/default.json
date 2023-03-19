@@ -8,16 +8,32 @@
     "types": ["uint8", "bytes", "uint256"]
   },
   "networks": {
+    "BSCTEST": {
+      "nodeAddress": "https://bsc-testnet.public.blastapi.io",
+      "chainId": 97,
+      "omniverseContractAddress": "0x7c52b6e88c9Cc397d82506b9e4df6D7D06674934",
+      "omniverseContractAbiPath": "./res/SkywalkerFungible.json",
+      "compatibleChain": "ethereum",
+      "omniverseChainId": 0
+    },
     "GOERLI": {
       "nodeAddress": "wss://goerli.infura.io/ws/v3/94ebec44ffc34501898dd5dccf387f81",
       "chainId": 5,
-      "omniverseContractAddress": "0xB38d75754d799e4f07bb9EE774B9b2DAe3dB0E56",
+      "omniverseContractAddress": "0x8Ec8b47771EA452f206B441A71e0a166F348C711",
       "omniverseContractAbiPath": "./res/SkywalkerFungible.json",
       "compatibleChain": "ethereum",
       "omniverseChainId": 2
     },
+    "MOONBASEALPHA": {
+      "nodeAddress": "wss://moonbeam-alpha.api.onfinality.io/public-ws",
+      "chainId": 1287,
+      "omniverseContractAddress": "0x4B89eBA967d8333C6664F42A18EE5fb42e22a0dA",
+      "omniverseContractAbiPath": "./res/SkywalkerFungible.json",
+      "compatibleChain": "ethereum",
+      "omniverseChainId": 3
+    },
     "SUBSTRATE": {
-      "nodeAddress": "ws://3.122.90.113:9944",
+      "nodeAddress": "ws://35.158.224.2:9922",
       "compatibleChain": "substrate",
       "pallets": ["assets", "uniques"],
       "omniverseChainId": 1
