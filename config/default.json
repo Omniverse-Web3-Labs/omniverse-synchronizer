@@ -32,6 +32,14 @@
       "compatibleChain": "ethereum",
       "omniverseChainId": 3
     },
+    "PLATON": {
+      "nodeAddress": "wss://openapi2.platon.network/ws",
+      "chainId": 210425,
+      "omniverseContractAddress": "0x1181E9bBb48a5448c81CF1A2532A3D4257C69E22",
+      "omniverseContractAbiPath": "./res/SkywalkerFungible.json",
+      "compatibleChain": "ethereum",
+      "omniverseChainId": 4
+    },
     "SUBSTRATE": {
       "nodeAddress": "ws://35.158.224.2:9922",
       "compatibleChain": "substrate",
