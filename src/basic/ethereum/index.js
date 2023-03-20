@@ -76,7 +76,7 @@ class EthereumHandler {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
       let nonce = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionCount', [message.from]);
-      if (nonce == message.nonce) {
+      if (nonce >= message.nonce) {
         let txData = await ethereum.contractCall(this.omniverseContractContract, 'transactionCache', [message.from]);
         if (txData.timestamp == 0) {
           await ethereum.sendTransaction(this.web3, this.chainId, this.omniverseContractContract, 'sendOmniverseTransaction',
