@@ -90,21 +90,27 @@ class chainHandlerMgr {
     }
 
     async pushMessages() {
+        let pushMessageRequest = [];
         for (let i in this.chainHandlers) {
-            await this.chainHandlers[i].pushMessages();
-        }        
+            pushMessageRequest.push(this.chainHandlers[i].pushMessages());
+        }
+        await Promise.all(pushMessageRequest);
     }
 
     async tryTrigger() {
+        let triggerRequest = [];
         for (let i in this.chainHandlers) {
-            await this.chainHandlers[i].tryTrigger();
+            triggerRequest.push(this.chainHandlers[i].tryTrigger());
         }
+        await Promise.all(triggerRequest);
     }
 
     async update() {
+        let updateRequest = [];
         for (let i in this.chainHandlers) {
-            await this.chainHandlers[i].update();
+            updateRequest.push(this.chainHandlers[i].update());
         }
+        await Promise.all(updateRequest);
     }
 }
 
