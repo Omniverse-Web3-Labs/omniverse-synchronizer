@@ -79,10 +79,12 @@ class EthereumHandler {
       if (nonce >= message.nonce) {
         let txData = await ethereum.contractCall(this.omniverseContractContract, 'transactionCache', [message.from]);
         if (txData.timestamp == 0) {
-          await ethereum.sendTransaction(this.web3, this.chainId, this.omniverseContractContract, 'sendOmniverseTransaction',
+          let ret = await ethereum.sendTransaction(this.web3, this.chainId, this.omniverseContractContract, 'sendOmniverseTransaction',
             this.testAccountPrivateKey, [this.messages[i]]);
-          this.messages.splice(i, 1);
-          break;
+          if (ret) {
+            this.messages.splice(i, 1);
+            break;
+          }
         }
         else {
           logger.info('Cooling down');
