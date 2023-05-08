@@ -79,6 +79,16 @@ class EthereumHandler {
       if (nonce >= message.nonce) {
         let txData = await ethereum.contractCall(this.omniverseContractContract, 'transactionCache', [message.from]);
         if (txData.timestamp == 0) {
+          // message exists
+          if (nonce > message.nonce) {
+            let hisData = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionData', [message.from, message.nonce]);
+            let bCompare = (hisData[0].nonce == message.nonce) && (hisData[0].chainId == message.chainId) && (hisData[0].initiateSC == message.initiateSC) &&
+            (hisData[0].from == message.from) && (hisData[0].payload == message.payload) && (hisData[0].signature == message.signature);
+            if (bCompare) {
+              logger.debug(utils.format('The message of pk {0}, nonce {1} has been executed on chain {2}', message.from, message.nonce, this.chainName));
+            }
+          }
+          
           let ret = await ethereum.sendTransaction(this.web3, this.chainId, this.omniverseContractContract, 'sendOmniverseTransaction',
             this.testAccountPrivateKey, [this.messages[i]]);
           if (ret) {
