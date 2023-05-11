@@ -5,7 +5,7 @@ module.exports = {
       const txHash = await provider.tx[moduleName][methodName](...arguments)
       .signAndSend(account);
 
-      console.log('tx hash', txHash);
+      console.log('tx hash:', txHash.toJSON());
       return txHash;
     } catch (e) {
       console.error(e);

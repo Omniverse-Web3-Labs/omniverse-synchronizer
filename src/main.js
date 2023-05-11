@@ -18,6 +18,17 @@ async function main() {
     logger.info(utils.format('Waiting for {0} seconds...', config.get('scanInterval')));
     await utils.sleep(config.get('scanInterval'));
   }
+  logger.error('Exit main can not be arrived');
 }
 
 main();
+
+process.on('unhandledRejection', (err) => {
+  logger.error('UnhanledRejection', err);
+  process.exit();
+})
+
+process.on('uncaughtException', (err) => {
+  logger.error('UnhanledException', err);
+  process.exit();
+})
