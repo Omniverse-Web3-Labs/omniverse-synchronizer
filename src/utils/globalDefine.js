@@ -1,8 +1,11 @@
 module.exports = {
     TokenOpType: {
-        TRANSFER: 1,
-        MINT: 3,
+        TRANSFER: 0,
+        MINT: 1,
+        BURN: 2,
     },
+
+    LogRange: 5000,
 
     ErrorCode: {
         SUCCESS: 0,
