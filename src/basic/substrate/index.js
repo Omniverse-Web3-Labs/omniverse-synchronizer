@@ -91,7 +91,26 @@ class SubstrateHandler {
             [message.from, palletName, tokenId]
           );
           // nonce = nonce.toJSON();
-          if (nonce == message.nonce) {
+          if (nonce >= message.nonce) {
+            if (nonce > message.nonce) {
+              // message exists
+              let hisData = await substrate.contractCall(
+                this.api,
+                'omniverseProtocol',
+                'transactionRecorder',
+                [message.from, palletName, tokenId, message.nonce]
+              ).unwrap().txData.toJSON();
+              logger.debug('hisData', hisData);
+              let bCompare = (hisData.txData.nonce == message.nonce) && (hisData.txData.chainId == message.chainId) &&
+              (hisData.txData.initiatorAddress == message.initiateSC) && (hisData.txData.from == message.from) &&
+              (hisData.txData.payload == message.payload) && (hisData.txData.signature == message.signature);
+              if (bCompare) {
+                this.messages.splice(i, 1);
+                logger.debug(utils.format('The message of pk {0}, nonce {1} has been executed on chain {2}', message.from, message.nonce, this.chainName));
+                return;
+              }
+            }
+            
             await substrate.sendTransaction(
               this.api,
               palletName,
@@ -174,8 +193,8 @@ class SubstrateHandler {
                 height: blockNumber,
               });
               cbHandler.onMessageSent(this.omniverseChainId, m, members);
-            } else if (event.method == 'TransactionExecuted') {
-              logger.debug('TransactionExecuted event', event.data.toJSON());
+            } else if (event.method == 'TransactionExecuted' || event.method == 'TransactionDuplicated') {
+              logger.debug(event.method + ' event', this.omniverseChainId, event.data.toJSON());
               cbHandler.onMessageExecuted(
                 this.omniverseChainId,
                 event.data[0].toHuman(),

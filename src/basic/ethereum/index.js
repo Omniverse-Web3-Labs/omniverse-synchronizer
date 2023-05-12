@@ -85,7 +85,9 @@ class EthereumHandler {
             let bCompare = (hisData[0].nonce == message.nonce) && (hisData[0].chainId == message.chainId) && (hisData[0].initiateSC == message.initiateSC) &&
             (hisData[0].from == message.from) && (hisData[0].payload == message.payload) && (hisData[0].signature == message.signature);
             if (bCompare) {
+              this.messages.splice(i, 1);
               logger.debug(utils.format('The message of pk {0}, nonce {1} has been executed on chain {2}', message.from, message.nonce, this.chainName));
+              return;
             }
           }
           
@@ -262,6 +264,26 @@ class EthereumHandler {
       // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
       logger.info('TransactionExecuted error', this.chainName, error);
       logger.info('TransactionExecuted receipt', receipt);
+    });
+
+    this.omniverseContractContract.events.TransactionDuplicated()
+    .on("connected", (subscriptionId) => {
+      logger.info('TransactionDuplicated connected', subscriptionId);
+    })
+    .on('data', async (event) => {
+      logger.debug('TransactionDuplicated event', event);
+      // to be continued, decoding is needed here for omniverse
+      cbHandler.onMessageExecuted(this.omniverseChainId, event.returnValues.pk, event.returnValues.nonce);
+    })
+    .on('changed', (event) => {
+      // remove event from local database
+      logger.info('TransactionDuplicated changed');
+      logger.debug(event);
+    })
+    .on('error', (error, receipt) => {
+      // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
+      logger.info('TransactionDuplicated error', this.chainName, error);
+      logger.info('TransactionDuplicated receipt', receipt);
     });
   }
 
