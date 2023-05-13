@@ -95,11 +95,12 @@ class EthereumHandler {
             this.testAccountPrivateKey, [this.messages[i]]);
           if (ret) {
             this.messages.splice(i, 1);
+            logger.debug(utils.format('The message of pk {0}, nonce {1} has been pushed to chain {2}', message.from, message.nonce, this.chainName));
             break;
           }
         }
         else {
-          logger.info('Cooling down');
+          logger.info(utils.format('Chain: {0} Cooling down', this.chainName));
         }
       }
       else {
@@ -118,7 +119,7 @@ class EthereumHandler {
         stateDB.setValue(self.chainName, blockNumber);
       }
       else {
-        logger.info('Message waiting to be finalized', this.messageBlockHeights[0].nonce);
+        logger.info(utils.format('Chain {0}, Message waiting to be finalized, nonce {1}', this.chainName, this.messageBlockHeights[0].nonce));
       }
     }
   }
@@ -126,7 +127,7 @@ class EthereumHandler {
   async tryTrigger() {
     let ret = await ethereum.contractCall(this.omniverseContractContract, 'getExecutableDelayedTx', []);
     if (ret.sender != '0x') {
-      logger.debug('Delayed transaction', ret);
+      logger.debug(utils.format('Chain {0}, Delayed transaction {1}', this.chainName, ret));
       let receipt = await ethereum.sendTransaction(this.web3, this.chainId, this.omniverseContractContract, 'triggerExecution',
         this.testAccountPrivateKey, []);
       if (!receipt) {
@@ -174,7 +175,7 @@ class EthereumHandler {
     }
 
     if (!height) {
-      logger.error('The block height should not be null');
+      // logger.error('The block height should not be null');
       return;
     }
 
@@ -189,11 +190,11 @@ class EthereumHandler {
     }
     else {
       if (blockNumber - fromBlock > globalDefine.LogRange) {
-        logger.info('Exceed max log range, subscribe from the latest');
+        logger.info(utils.format('Chain {0}: Exceed max log range, subscribe from the latest', this.chainName));
         fromBlock = 'latest'
       }
     }
-    logger.info(this.chainName, 'Block height', fromBlock);
+    logger.info(utils.format('Chain {0}: Block height {1}', this.chainName, fromBlock));
     this.omniverseContractContract.events.TransactionSent({
       fromBlock: fromBlock
     })
@@ -206,7 +207,7 @@ class EthereumHandler {
       console.log(event.returnValues.pk, event.returnValues.nonce);
       let message = await ethereum.contractCall(this.omniverseContractContract, 'transactionCache', [event.returnValues.pk]);
       if (message.timestamp != 0 && event.returnValues.nonce == message.txData.nonce) {
-        console.log('Got cached transaction', this.chainName);
+        console.log(utils.format('Chain: {0}, gets cached transaction', this.chainName));
       }
       else {
         let messageCount = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionCount', [event.returnValues.pk]);

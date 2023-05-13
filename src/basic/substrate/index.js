@@ -221,7 +221,7 @@ class SubstrateHandler {
     }
 
     if (!height) {
-      logger.error('The block height should not be null');
+      // logger.error('The block height should not be null');
       return;
     }
 

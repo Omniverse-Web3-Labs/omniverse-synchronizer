@@ -31,6 +31,10 @@ class chainHandlerMgr {
     }
 
     onMessageSent(chainId, message, members) {
+        if (this.messageObserver[message.from + message.nonce]) {
+            return;
+        }
+
         let task = {
             fromChain: chainId,
             members: members,
@@ -73,7 +77,9 @@ class chainHandlerMgr {
         }
 
         if (task.taskMembers.length == 0) {
-            this.chainHandlers[task.fromChain].messageFinalized(from, nonce);
+            for (let i in this.chainHandlers) {
+                this.chainHandlers[i].messageFinalized(from, nonce);
+            }
         }
     }
 
