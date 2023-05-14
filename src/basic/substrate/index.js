@@ -28,6 +28,7 @@ class SubstrateHandler {
         'substrate'
       )
     );
+    this.restoreBlockHeight = 0;
     this.messageBlockHeights = [];
     this.network = config.get('networks.' + this.chainName);
     this.omniverseChainId = config.get(
@@ -122,6 +123,63 @@ class SubstrateHandler {
             return;
           }
         }
+      }
+    }
+  }
+
+  async beforeRestore() {
+    this.restoreBlockHeight = await this.api.rpc.chain.getBlock();
+  }
+
+  async restore(pendings) {
+    for (let i = 0; i < pendings.length; i++) {
+      let checkItem = (item) => {
+        return item[0] == this.chainName;
+      }
+
+      let item = pendings[i].chains.find(checkItem);
+      if (item) {
+        logger.debug(utils.format('Transaction has been pushed to chain {0}', this.chainName));
+        let pk = pendings[i].pk;
+        let tokenId = this.network.tokenId;
+        let nonce = pendings[i].nonce;
+        let palletName = this.network.pallets[0];
+        let message = await substrate.contractCall(
+          this.api,
+          'omniverseProtocol',
+          'transactionRecorder',
+          [pk, palletName, tokenId, nonce]
+        );
+
+        let tokenInfo = await substrate.contractCall(
+          this.api,
+          palletName,
+          'tokensInfo',
+          [tokenId]
+        );
+
+        let m = message.unwrap().txData.toJSON();
+        let payload = this.generalizeData(m);
+        m.payload = payload;
+        m.initiateSC = m.initiatorAddress;
+        delete m.initiatorAddress;
+        let mb = tokenInfo.unwrap().members.toHuman();
+        let members = [];
+        for (let member of mb) {
+          members.push({
+            chainId: member[0],
+            contractAddr: member[1],
+          });
+        }
+        this.messageBlockHeights.push({
+          from: m.from,
+          nonce: m.nonce,
+          height: blockNumber,
+        });
+        cbHandler.onMessageSent(this.omniverseChainId, m, members);
+      }
+      else {
+        logger.debug(utils.format('Transaction has not been pushed to chain {0}', this.chainName));
       }
     }
   }
@@ -253,7 +311,7 @@ class SubstrateHandler {
   }
 
   async start(cbHandler) {
-    let fromBlock = stateDB.getValue(this.chainName);
+    let fromBlock = this.restoreBlockHeight || stateDB.getValue(this.chainName);
     let currentBlock = await this.api.rpc.chain.getBlock();
     let currentBlockNumber = currentBlock.block.header.number.toJSON();
     console.log(currentBlockNumber - fromBlock);

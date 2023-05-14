@@ -118,6 +118,31 @@ class chainHandlerMgr {
         }
         await Promise.all(updateRequest);
     }
+
+    async restore() {
+      if (config.has('database') && config.get('database')) {
+        for (let i in this.chainHandlers) {
+            await this.chainHandlers[i].beforeRestore();
+        }
+
+        let res = request('GET', config.get("database"));
+        if (res && res.statusCode == 200) {
+          let body = res.getBody();
+          let pendings = JSON.parse(body);
+          for (let i = 0; i < pendings.length; i++) {
+            for (let i in this.chainHandlers) {
+                await this.chainHandlers[i].restore();
+            }
+          }
+        }
+        else {
+            global.logger.info('Result error', res);
+        }
+      }
+      else {
+        global.logger.info('Database not configured');
+      }
+    }
 }
 
 let mgr = new chainHandlerMgr();

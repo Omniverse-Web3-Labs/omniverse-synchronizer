@@ -17,6 +17,7 @@ class EthereumHandler {
 
   async init() {
     logger.info(utils.format("Init handler: {0}, compatible chain: {1}", this.chainName, "ethereum"));
+    this.restoreBlockHeight = 0;
     // Enable auto reconnection
     const options = {
       reconnect: {
@@ -124,6 +125,43 @@ class EthereumHandler {
     }
   }
 
+  async beforeRestore() {
+    this.restoreBlockHeight = await this.web3.eth.getBlockNumber();
+  }
+
+  async restore(pendings) {
+    for (let i = 0; i < pendings.length; i++) {
+      let checkItem = (item) => {
+        return item[0] == this.chainName;
+      }
+
+      let item = pendings[i].chains.find(checkItem);
+      if (item) {
+        logger.debug(utils.format('Transaction has been pushed to chain {0}', this.chainName));
+        message = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionData', [pendings[i].pk, pendings[i].nonce]);
+        let members = await ethereum.contractCall(this.omniverseContractContract, 'getMembers', []);
+        let data = this.generalizeData(message.txData.payload);
+        let m = {
+          nonce: message.txData.nonce,
+          chainId: message.txData.chainId,
+          initiateSC: message.txData.initiateSC,
+          from: message.txData.from,
+          payload: data,
+          signature: message.txData.signature,
+        }
+        this.messageBlockHeights.push({
+          from: pendings[i].pk,
+          nonce: pendings[i].nonce,
+          height: item[1]
+        });
+        cbHandler.onMessageSent(this.omniverseChainId, m, members);
+      }
+      else {
+        logger.debug(utils.format('Transaction has not been pushed to chain {0}', this.chainName));
+      }
+    }
+  }
+
   async tryTrigger() {
     let ret = await ethereum.contractCall(this.omniverseContractContract, 'getExecutableDelayedTx', []);
     if (ret.sender != '0x') {
@@ -183,7 +221,7 @@ class EthereumHandler {
   }
 
   async start(cbHandler) {
-    let fromBlock = stateDB.getValue(this.chainName);
+    let fromBlock = this.restoreBlockHeight || stateDB.getValue(this.chainName);
     let blockNumber = await this.web3.eth.getBlockNumber();
     if (!fromBlock) {
       fromBlock = 'latest';
