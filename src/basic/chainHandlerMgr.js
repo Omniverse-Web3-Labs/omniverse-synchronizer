@@ -1,5 +1,6 @@
 'use strict';
 const config = require('config');
+const request = require('sync-request');
 
 class chainHandlerMgr {
     constructor() {
