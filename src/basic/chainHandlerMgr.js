@@ -121,28 +121,31 @@ class chainHandlerMgr {
     }
 
     async restore() {
-      if (config.has('database') && config.get('database')) {
-        for (let i in this.chainHandlers) {
-            await this.chainHandlers[i].beforeRestore();
-        }
-
-        let res = request('GET', config.get("database"));
-        if (res && res.statusCode == 200) {
-          let body = res.getBody();
-          let pendings = JSON.parse(body);
-          for (let i = 0; i < pendings.length; i++) {
+        logger.info('restore');
+        if (config.has('database') && config.get('database')) {
             for (let i in this.chainHandlers) {
-                await this.chainHandlers[i].restore();
+                await this.chainHandlers[i].beforeRestore();
             }
-          }
+
+            let res = request('GET', config.get("database"));
+            if (res && res.statusCode == 200) {
+                let body = res.getBody();
+                let pendings = JSON.parse(body);
+                if (pendings.code != 0) {
+                    logger.error('Restore failed', pendings.message);
+                    return;
+                }
+                for (let i in this.chainHandlers) {
+                    await this.chainHandlers[i].restore(pendings.message);
+                }
+            }
+            else {
+                global.logger.info('Result error', res);
+            }
         }
         else {
-            global.logger.info('Result error', res);
+            global.logger.info('Database not configured');
         }
-      }
-      else {
-        global.logger.info('Database not configured');
-      }
     }
 }
 
