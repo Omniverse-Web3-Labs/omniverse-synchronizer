@@ -85,12 +85,12 @@ class SubstrateHandler {
           )
         ).toHuman();
         if (tokenId) {
-          let nonce = await substrate.contractCall(
+          let nonce = (await substrate.contractCall(
             this.api,
             'omniverseProtocol',
             'transactionCount',
             [message.from, palletName, tokenId]
-          );
+          )).toString();
           // nonce = nonce.toJSON();
           if (nonce >= message.nonce) {
             if (nonce > message.nonce) {

@@ -8,7 +8,7 @@ module.exports = {
       console.log('tx hash:', txHash.toJSON());
       return txHash;
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     }
   },
   
