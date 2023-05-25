@@ -93,7 +93,7 @@ class EthereumHandler {
           }
           
           let ret = await ethereum.sendTransaction(this.web3, this.chainId, this.omniverseContractContract, 'sendOmniverseTransaction',
-            this.testAccountPrivateKey, [this.messages[i]]);
+            this.testAccountPrivateKey, [message]);
           if (ret) {
             this.messages.splice(i, 1);
             logger.debug(utils.format('The message of pk {0}, nonce {1} has been pushed to chain {2}', message.from, message.nonce, this.chainName));
@@ -129,7 +129,7 @@ class EthereumHandler {
     this.restoreBlockHeight = await this.web3.eth.getBlockNumber();
   }
 
-  async restore(pendings) {
+  async restore(pendings, cbHandler) {
     for (let i = 0; i < pendings.length; i++) {
       let checkItem = (item) => {
         return item[0] == this.chainName;
@@ -138,7 +138,21 @@ class EthereumHandler {
       let item = pendings[i].chains.find(checkItem);
       if (item) {
         logger.debug(utils.format('Transaction has been pushed to chain {0}', this.chainName));
-        message = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionData', [pendings[i].pk, pendings[i].nonce]);
+        let message;
+        let nonce = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionCount', [pendings[i].pk]);
+        logger.debug('nonce', nonce);
+        if (nonce > pendings[i].nonce) {
+          message = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionData', [pendings[i].pk, pendings[i].nonce]);
+        }
+        else {
+          message = await ethereum.contractCall(this.omniverseContractContract, 'transactionCache', [pendings[i].pk]);
+          logger.debug('cached message', message);
+          if (message.txData.nonce != pendings[i].nonce) {
+            logger.error(utils.format('Chain {0} Restore work failed, pk {1}, nonce {2}', this.chainName, pendings[i].pk, pendings[i].nonce));
+            throw 'Restore failed';
+          }
+        } 
+        logger.debug('Message is', message);
         let members = await ethereum.contractCall(this.omniverseContractContract, 'getMembers', []);
         let data = this.generalizeData(message.txData.payload);
         let m = {

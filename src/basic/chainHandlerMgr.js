@@ -32,6 +32,7 @@ class chainHandlerMgr {
     }
 
     onMessageSent(chainId, message, members) {
+        logger.debug('Message sent', chainId, message, members);
         if (this.messageObserver[message.from + message.nonce]) {
             return;
         }
@@ -136,7 +137,7 @@ class chainHandlerMgr {
                     return;
                 }
                 for (let i in this.chainHandlers) {
-                    await this.chainHandlers[i].restore(pendings.message);
+                    await this.chainHandlers[i].restore(pendings.message, this);
                 }
             }
             else {

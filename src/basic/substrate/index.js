@@ -131,7 +131,7 @@ class SubstrateHandler {
     this.restoreBlockHeight = await this.api.rpc.chain.getBlock();
   }
 
-  async restore(pendings) {
+  async restore(pendings, cbHandler) {
     for (let i = 0; i < pendings.length; i++) {
       let checkItem = (item) => {
         return item[0] == this.chainName;
