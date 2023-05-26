@@ -73,7 +73,7 @@ class EthereumHandler {
       });
   }
 
-  async pushMessages() {
+  async pushMessages(cbHandler) {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
       let nonce = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionCount', [message.from]);
@@ -88,6 +88,7 @@ class EthereumHandler {
             if (bCompare) {
               this.messages.splice(i, 1);
               logger.debug(utils.format('The message of pk {0}, nonce {1} has been executed on chain {2}', message.from, message.nonce, this.chainName));
+              cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce);
               return;
             }
           }
@@ -163,12 +164,13 @@ class EthereumHandler {
           payload: data,
           signature: message.txData.signature,
         }
-        this.messageBlockHeights.push({
-          from: pendings[i].pk,
-          nonce: pendings[i].nonce,
-          height: item[1]
-        });
-        cbHandler.onMessageSent(this.omniverseChainId, m, members);
+        if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+          this.messageBlockHeights.push({
+            from: pendings[i].pk,
+            nonce: pendings[i].nonce,
+            height: item[1]
+          });
+        }
       }
       else {
         logger.debug(utils.format('Transaction has not been pushed to chain {0}', this.chainName));
@@ -281,12 +283,13 @@ class EthereumHandler {
         payload: data,
         signature: message.txData.signature,
       }
-      this.messageBlockHeights.push({
-        from: event.returnValues.pk,
-        nonce: event.returnValues.nonce,
-        height: event.blockNumber
-      });
-      cbHandler.onMessageSent(this.omniverseChainId, m, members);
+      if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+        this.messageBlockHeights.push({
+          from: event.returnValues.pk,
+          nonce: event.returnValues.nonce,
+          height: event.blockNumber
+        });
+      }
     })
     .on('changed', (event) => {
       // remove event from local database

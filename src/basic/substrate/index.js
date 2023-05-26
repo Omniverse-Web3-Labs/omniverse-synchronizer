@@ -95,19 +95,20 @@ class SubstrateHandler {
           if (nonce >= message.nonce) {
             if (nonce > message.nonce) {
               // message exists
-              let hisData = await substrate.contractCall(
+              let hisData = (await substrate.contractCall(
                 this.api,
                 'omniverseProtocol',
                 'transactionRecorder',
                 [message.from, palletName, tokenId, message.nonce]
-              ).unwrap().txData.toJSON();
+              )).unwrap().txData.toJSON();
               logger.debug('hisData', hisData);
-              let bCompare = (hisData.txData.nonce == message.nonce) && (hisData.txData.chainId == message.chainId) &&
-              (hisData.txData.initiatorAddress == message.initiateSC) && (hisData.txData.from == message.from) &&
-              (hisData.txData.payload == message.payload) && (hisData.txData.signature == message.signature);
+              let bCompare = (hisData.nonce == message.nonce) && (hisData.chainId == message.chainId) &&
+              (hisData.initiatorAddress == message.initiateSC) && (hisData.from == message.from) &&
+              (hisData.payload == message.payload) && (hisData.signature == message.signature);
               if (bCompare) {
                 this.messages.splice(i, 1);
                 logger.debug(utils.format('The message of pk {0}, nonce {1} has been executed on chain {2}', message.from, message.nonce, this.chainName));
+                cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce);
                 return;
               }
             }
@@ -171,12 +172,13 @@ class SubstrateHandler {
             contractAddr: member[1],
           });
         }
-        this.messageBlockHeights.push({
-          from: m.from,
-          nonce: m.nonce,
-          height: blockNumber,
-        });
-        cbHandler.onMessageSent(this.omniverseChainId, m, members);
+        if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+          this.messageBlockHeights.push({
+            from: m.from,
+            nonce: m.nonce,
+            height: item[1],
+          });
+        }
       }
       else {
         logger.debug(utils.format('Transaction has not been pushed to chain {0}', this.chainName));
@@ -245,12 +247,13 @@ class SubstrateHandler {
                   contractAddr: member[1],
                 });
               }
-              this.messageBlockHeights.push({
-                from: m.from,
-                nonce: m.nonce,
-                height: blockNumber,
-              });
-              cbHandler.onMessageSent(this.omniverseChainId, m, members);
+              if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+                this.messageBlockHeights.push({
+                  from: m.from,
+                  nonce: m.nonce,
+                  height: blockNumber,
+                });
+              }
             } else if (event.method == 'TransactionExecuted' || event.method == 'TransactionDuplicated') {
               logger.debug(event.method + ' event', this.omniverseChainId, event.data.toJSON());
               cbHandler.onMessageExecuted(
@@ -342,7 +345,7 @@ class SubstrateHandler {
       if (this.messageBlockHeights[0].height > currentBlockNumber) {
         stateDB.setValue(self.chainName, currentBlockNumber);
       } else {
-        logger.info('Message waiting to be finalized');
+        logger.info(utils.format('Chain {0}, Message waiting to be finalized, nonce {1}', this.chainName, this.messageBlockHeights[0].nonce));
       }
     }
   }

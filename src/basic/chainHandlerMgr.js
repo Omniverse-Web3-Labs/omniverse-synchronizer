@@ -34,7 +34,7 @@ class chainHandlerMgr {
     onMessageSent(chainId, message, members) {
         logger.debug('Message sent', chainId, message, members);
         if (this.messageObserver[message.from + message.nonce]) {
-            return;
+            return false;
         }
 
         let task = {
@@ -51,6 +51,7 @@ class chainHandlerMgr {
             }
         }
         this.messageObserver[message.from + message.nonce] = task;
+        return true;
     }
 
     onMessageExecuted(chainId, from, nonce) {
@@ -100,7 +101,7 @@ class chainHandlerMgr {
     async pushMessages() {
         let pushMessageRequest = [];
         for (let i in this.chainHandlers) {
-            pushMessageRequest.push(this.chainHandlers[i].pushMessages());
+            pushMessageRequest.push(this.chainHandlers[i].pushMessages(this));
         }
         await Promise.all(pushMessageRequest);
     }
