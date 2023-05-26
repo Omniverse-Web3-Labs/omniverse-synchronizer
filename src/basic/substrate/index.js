@@ -233,13 +233,21 @@ class SubstrateHandler {
         await substrate.contractCall(this.api, palletName, 'delayedIndex', [])
       ).toJSON();
       if (delayedExecutingIndex < delayedIndex) {
-        await substrate.sendTransaction(
+        await substrate.enqueueTask(
+          this.queue,
           this.api,
           palletName,
           'triggerExecution',
           this.sender,
           []
         );
+        // await substrate.sendTransaction(
+        //   this.api,
+        //   palletName,
+        //   'triggerExecution',
+        //   this.sender,
+        //   []
+        // );
       }
     });
   }
