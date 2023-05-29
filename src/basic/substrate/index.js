@@ -232,9 +232,8 @@ class SubstrateHandler {
       let [delayedExecutingIndex, delayedIndex] = (
         await substrate.contractCall(this.api, palletName, 'delayedIndex', [])
       ).toJSON();
-      console.log('delayedExecutingIndex:', delayedExecutingIndex, 'delayedIndex:', delayedIndex);
       if (delayedExecutingIndex < delayedIndex) {
-        let result = await substrate.enqueueTask(
+        await substrate.enqueueTask(
           this.queue,
           this.api,
           palletName,
@@ -242,33 +241,8 @@ class SubstrateHandler {
           this.sender,
           []
         );
-        console.log('tryTrigger: ', result);
       }
     }
-    this.pallets.forEach(async (palletName) => {
-      let [delayedExecutingIndex, delayedIndex] = (
-        await substrate.contractCall(this.api, palletName, 'delayedIndex', [])
-      ).toJSON();
-      console.log('delayedExecutingIndex:', delayedExecutingIndex, 'delayedIndex:', delayedIndex);
-      if (delayedExecutingIndex < delayedIndex) {
-        let result = await substrate.enqueueTask(
-          this.queue,
-          this.api,
-          palletName,
-          'triggerExecution',
-          this.sender,
-          []
-        );
-        console.log('tryTrigger: ', result);
-        // await substrate.sendTransaction(
-        //   this.api,
-        //   palletName,
-        //   'triggerExecution',
-        //   this.sender,
-        //   []
-        // );
-      }
-    });
   }
 
   async getOmniverseEvent(blockHash, cbHandler) {
