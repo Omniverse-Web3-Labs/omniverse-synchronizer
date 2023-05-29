@@ -17,6 +17,7 @@ class EthereumHandler {
 
   async init() {
     logger.info(utils.format("Init handler: {0}, compatible chain: {1}", this.chainName, "ethereum"));
+    this.restoreBlockHeight = 0;
     // Enable auto reconnection
     const options = {
       reconnect: {
@@ -72,22 +73,36 @@ class EthereumHandler {
       });
   }
 
-  async pushMessages() {
+  async pushMessages(cbHandler) {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
       let nonce = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionCount', [message.from]);
       if (nonce >= message.nonce) {
         let txData = await ethereum.contractCall(this.omniverseContractContract, 'transactionCache', [message.from]);
         if (txData.timestamp == 0) {
+          // message exists
+          if (nonce > message.nonce) {
+            let hisData = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionData', [message.from, message.nonce]);
+            let bCompare = (hisData[0].nonce == message.nonce) && (hisData[0].chainId == message.chainId) && (hisData[0].initiateSC == message.initiateSC) &&
+            (hisData[0].from == message.from) && (hisData[0].payload == message.payload) && (hisData[0].signature == message.signature);
+            if (bCompare) {
+              this.messages.splice(i, 1);
+              logger.debug(utils.format('The message of pk {0}, nonce {1} has been executed on chain {2}', message.from, message.nonce, this.chainName));
+              cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce);
+              return;
+            }
+          }
+          
           let ret = await ethereum.sendTransaction(this.web3, this.chainId, this.omniverseContractContract, 'sendOmniverseTransaction',
-            this.testAccountPrivateKey, [this.messages[i]]);
+            this.testAccountPrivateKey, [message]);
           if (ret) {
             this.messages.splice(i, 1);
+            logger.debug(utils.format('The message of pk {0}, nonce {1} has been pushed to chain {2}', message.from, message.nonce, this.chainName));
             break;
           }
         }
         else {
-          logger.info('Cooling down');
+          logger.info(utils.format('Chain: {0} Cooling down', this.chainName));
         }
       }
       else {
@@ -106,7 +121,59 @@ class EthereumHandler {
         stateDB.setValue(self.chainName, blockNumber);
       }
       else {
-        logger.info('Message waiting to be finalized', this.messageBlockHeights[0].nonce);
+        logger.info(utils.format('Chain {0}, Message waiting to be finalized, nonce {1}', this.chainName, this.messageBlockHeights[0].nonce));
+      }
+    }
+  }
+
+  async beforeRestore() {
+    this.restoreBlockHeight = await this.web3.eth.getBlockNumber();
+  }
+
+  async restore(pendings, cbHandler) {
+    for (let i = 0; i < pendings.length; i++) {
+      let checkItem = (item) => {
+        return item[0] == this.chainName;
+      }
+
+      let item = pendings[i].chains.find(checkItem);
+      if (item) {
+        logger.debug(utils.format('Transaction has been pushed to chain {0}', this.chainName));
+        let message;
+        let nonce = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionCount', [pendings[i].pk]);
+        logger.debug('nonce', nonce);
+        if (nonce > pendings[i].nonce) {
+          message = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionData', [pendings[i].pk, pendings[i].nonce]);
+        }
+        else {
+          message = await ethereum.contractCall(this.omniverseContractContract, 'transactionCache', [pendings[i].pk]);
+          logger.debug('cached message', message);
+          if (message.txData.nonce != pendings[i].nonce) {
+            logger.error(utils.format('Chain {0} Restore work failed, pk {1}, nonce {2}', this.chainName, pendings[i].pk, pendings[i].nonce));
+            throw 'Restore failed';
+          }
+        } 
+        logger.debug('Message is', message);
+        let members = await ethereum.contractCall(this.omniverseContractContract, 'getMembers', []);
+        let data = this.generalizeData(message.txData.payload);
+        let m = {
+          nonce: message.txData.nonce,
+          chainId: message.txData.chainId,
+          initiateSC: message.txData.initiateSC,
+          from: message.txData.from,
+          payload: data,
+          signature: message.txData.signature,
+        }
+        if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+          this.messageBlockHeights.push({
+            from: pendings[i].pk,
+            nonce: pendings[i].nonce,
+            height: item[1]
+          });
+        }
+      }
+      else {
+        logger.debug(utils.format('Transaction has not been pushed to chain {0}', this.chainName));
       }
     }
   }
@@ -114,7 +181,7 @@ class EthereumHandler {
   async tryTrigger() {
     let ret = await ethereum.contractCall(this.omniverseContractContract, 'getExecutableDelayedTx', []);
     if (ret.sender != '0x') {
-      logger.debug('Delayed transaction', ret);
+      logger.debug(utils.format('Chain {0}, Delayed transaction {1}', this.chainName, ret));
       let receipt = await ethereum.sendTransaction(this.web3, this.chainId, this.omniverseContractContract, 'triggerExecution',
         this.testAccountPrivateKey, []);
       if (!receipt) {
@@ -162,7 +229,7 @@ class EthereumHandler {
     }
 
     if (!height) {
-      logger.error('The block height should not be null');
+      // logger.error('The block height should not be null');
       return;
     }
 
@@ -170,18 +237,18 @@ class EthereumHandler {
   }
 
   async start(cbHandler) {
-    let fromBlock = stateDB.getValue(this.chainName);
+    let fromBlock = this.restoreBlockHeight || stateDB.getValue(this.chainName);
     let blockNumber = await this.web3.eth.getBlockNumber();
     if (!fromBlock) {
       fromBlock = 'latest';
     }
     else {
       if (blockNumber - fromBlock > globalDefine.LogRange) {
-        logger.info('Exceed max log range, subscribe from the latest');
+        logger.info(utils.format('Chain {0}: Exceed max log range, subscribe from the latest', this.chainName));
         fromBlock = 'latest'
       }
     }
-    logger.info(this.chainName, 'Block height', fromBlock);
+    logger.info(utils.format('Chain {0}: Block height {1}', this.chainName, fromBlock));
     this.omniverseContractContract.events.TransactionSent({
       fromBlock: fromBlock
     })
@@ -194,7 +261,7 @@ class EthereumHandler {
       console.log(event.returnValues.pk, event.returnValues.nonce);
       let message = await ethereum.contractCall(this.omniverseContractContract, 'transactionCache', [event.returnValues.pk]);
       if (message.timestamp != 0 && event.returnValues.nonce == message.txData.nonce) {
-        console.log('Got cached transaction', this.chainName);
+        console.log(utils.format('Chain: {0}, gets cached transaction', this.chainName));
       }
       else {
         let messageCount = await ethereum.contractCall(this.omniverseContractContract, 'getTransactionCount', [event.returnValues.pk]);
@@ -216,12 +283,13 @@ class EthereumHandler {
         payload: data,
         signature: message.txData.signature,
       }
-      this.messageBlockHeights.push({
-        from: event.returnValues.pk,
-        nonce: event.returnValues.nonce,
-        height: event.blockNumber
-      });
-      cbHandler.onMessageSent(this.omniverseChainId, m, members);
+      if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+        this.messageBlockHeights.push({
+          from: event.returnValues.pk,
+          nonce: event.returnValues.nonce,
+          height: event.blockNumber
+        });
+      }
     })
     .on('changed', (event) => {
       // remove event from local database
@@ -252,6 +320,26 @@ class EthereumHandler {
       // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
       logger.info('TransactionExecuted error', this.chainName, error);
       logger.info('TransactionExecuted receipt', receipt);
+    });
+
+    this.omniverseContractContract.events.TransactionDuplicated()
+    .on("connected", (subscriptionId) => {
+      logger.info('TransactionDuplicated connected', subscriptionId);
+    })
+    .on('data', async (event) => {
+      logger.debug('TransactionDuplicated event', event);
+      // to be continued, decoding is needed here for omniverse
+      cbHandler.onMessageExecuted(this.omniverseChainId, event.returnValues.pk, event.returnValues.nonce);
+    })
+    .on('changed', (event) => {
+      // remove event from local database
+      logger.info('TransactionDuplicated changed');
+      logger.debug(event);
+    })
+    .on('error', (error, receipt) => {
+      // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
+      logger.info('TransactionDuplicated error', this.chainName, error);
+      logger.info('TransactionDuplicated receipt', receipt);
     });
   }
 

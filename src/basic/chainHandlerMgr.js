@@ -1,5 +1,6 @@
 'use strict';
 const config = require('config');
+const request = require('sync-request');
 
 class chainHandlerMgr {
     constructor() {
@@ -31,6 +32,11 @@ class chainHandlerMgr {
     }
 
     onMessageSent(chainId, message, members) {
+        logger.debug('Message sent', chainId, message, members);
+        if (this.messageObserver[message.from + message.nonce]) {
+            return false;
+        }
+
         let task = {
             fromChain: chainId,
             members: members,
@@ -45,6 +51,7 @@ class chainHandlerMgr {
             }
         }
         this.messageObserver[message.from + message.nonce] = task;
+        return true;
     }
 
     onMessageExecuted(chainId, from, nonce) {
@@ -73,7 +80,9 @@ class chainHandlerMgr {
         }
 
         if (task.taskMembers.length == 0) {
-            this.chainHandlers[task.fromChain].messageFinalized(from, nonce);
+            for (let i in this.chainHandlers) {
+                this.chainHandlers[i].messageFinalized(from, nonce);
+            }
         }
     }
 
@@ -92,7 +101,7 @@ class chainHandlerMgr {
     async pushMessages() {
         let pushMessageRequest = [];
         for (let i in this.chainHandlers) {
-            pushMessageRequest.push(this.chainHandlers[i].pushMessages());
+            pushMessageRequest.push(this.chainHandlers[i].pushMessages(this));
         }
         await Promise.all(pushMessageRequest);
     }
@@ -111,6 +120,34 @@ class chainHandlerMgr {
             updateRequest.push(this.chainHandlers[i].update());
         }
         await Promise.all(updateRequest);
+    }
+
+    async restore() {
+        logger.info('restore');
+        if (config.has('database') && config.get('database')) {
+            for (let i in this.chainHandlers) {
+                await this.chainHandlers[i].beforeRestore();
+            }
+
+            let res = request('GET', config.get("database"));
+            if (res && res.statusCode == 200) {
+                let body = res.getBody();
+                let pendings = JSON.parse(body);
+                if (pendings.code != 0) {
+                    logger.error('Restore failed', pendings.message);
+                    return;
+                }
+                for (let i in this.chainHandlers) {
+                    await this.chainHandlers[i].restore(pendings.message, this);
+                }
+            }
+            else {
+                global.logger.info('Result error', res);
+            }
+        }
+        else {
+            global.logger.info('Database not configured');
+        }
     }
 }
 

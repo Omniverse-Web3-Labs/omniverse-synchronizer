@@ -3,15 +3,21 @@ global.config = require('config');
 global.logger = require('./utils/logger');
 global.utils = require('./utils/utils');
 global.stateDB = require('./utils/stateDB');
+const request = require('sync-request');
 
 async function init() {
   await chainHandlerMgr.init();
   stateDB.init(config.get('stateDB'));
 }
 
+async function restoreWork() {
+  await chainHandlerMgr.restore();
+}
+
 async function main() {
   logger.info("Launch validator node...");
   await init();
+  await restoreWork();
   await chainHandlerMgr.run();
   while (true) {
     await chainHandlerMgr.loop();
