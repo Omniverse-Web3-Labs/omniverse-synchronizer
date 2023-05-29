@@ -233,14 +233,38 @@ class SubstrateHandler {
         await substrate.contractCall(this.api, palletName, 'delayedIndex', [])
       ).toJSON();
       if (delayedExecutingIndex < delayedIndex) {
-        await substrate.enqueueTask(
-          this.queue,
-          this.api,
-          palletName,
-          'triggerExecution',
-          this.sender,
-          []
-        );
+        let delayedTx = (
+          await substrate.contractCall(
+            this.api,
+            palletName,
+            'delayedTransactions',
+            [delayedExecutingIndex]
+          )
+        ).toJSON();
+        let tokenInfo = (
+          await substrate.contractCall(this.api, palletName, 'tokensInfo', [
+            delayedTx.tokenId,
+          ])
+        ).toJSON();
+        let omniTx = (
+          await substrate.contractCall(
+            this.api,
+            'omniverseProtocol',
+            'transactionRecorder',
+            [delayedTx.sender, palletName, delayedTx.tokenId, delayedTx.nonce]
+          )
+        ).toJSON();
+        let currentTime = new Date().getTime() / 1000;
+        if (currentTime >= omniTx.timestamp + tokenInfo.cooldownTime) {
+          await substrate.enqueueTask(
+            this.queue,
+            this.api,
+            palletName,
+            'triggerExecution',
+            this.sender,
+            []
+          );
+        }
       }
     }
   }

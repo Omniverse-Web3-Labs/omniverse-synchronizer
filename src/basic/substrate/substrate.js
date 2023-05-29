@@ -25,7 +25,7 @@ module.exports = {
     api.tx[moduleName][methodName](...arguments).signAndSend(
       account,
       ({ status, events }) => {
-        console.log(status.isInBlock, status.isFinalized);
+        // console.log(status.isInBlock, status.isFinalized);
         if (status.isInBlock || status.isFinalized) {
           events
             // find/filter for failed events
