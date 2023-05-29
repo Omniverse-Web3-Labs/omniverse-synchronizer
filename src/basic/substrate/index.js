@@ -6,8 +6,8 @@ const substrate = require('./substrate.js');
 const fs = require('fs');
 const utils = require('../../utils/utils.js');
 const logger = require('../../utils/logger.js');
-const globalDefine = require('../../utils/globalDefine.js');
-const { u8, u128, Struct, Vector, Bytes } = require('scale-ts');
+const { u8, u128, Struct, Vector } = require('scale-ts');
+const { queue } = require('async');
 
 const Assets = Struct({
   op: u8,
@@ -18,6 +18,7 @@ const Assets = Struct({
 class SubstrateHandler {
   constructor(chainName) {
     this.chainName = chainName;
+    this.queue = queue(substrate.substrateTxWorker, 1);
   }
 
   async init() {
@@ -28,6 +29,7 @@ class SubstrateHandler {
         'substrate'
       )
     );
+    this.restoreBlockHeight = 0;
     this.messageBlockHeights = [];
     this.network = config.get('networks.' + this.chainName);
     this.omniverseChainId = config.get(
@@ -84,22 +86,73 @@ class SubstrateHandler {
           )
         ).toHuman();
         if (tokenId) {
-          let nonce = await substrate.contractCall(
-            this.api,
-            'omniverseProtocol',
-            'transactionCount',
-            [message.from, palletName, tokenId]
-          );
+          let nonce = (
+            await substrate.contractCall(
+              this.api,
+              'omniverseProtocol',
+              'transactionCount',
+              [message.from, palletName, tokenId]
+            )
+          ).toString();
           // nonce = nonce.toJSON();
-          if (nonce == message.nonce) {
-            await substrate.sendTransaction(
+          if (nonce >= message.nonce) {
+            if (nonce > message.nonce) {
+              // message exists
+              let hisData = (
+                await substrate.contractCall(
+                  this.api,
+                  'omniverseProtocol',
+                  'transactionRecorder',
+                  [message.from, palletName, tokenId, message.nonce]
+                )
+              )
+                .unwrap()
+                .txData.toJSON();
+              logger.debug('hisData', hisData);
+              let bCompare =
+                hisData.nonce == message.nonce &&
+                hisData.chainId == message.chainId &&
+                hisData.initiatorAddress == message.initiateSC &&
+                hisData.from == message.from &&
+                hisData.payload == message.payload &&
+                hisData.signature == message.signature;
+              if (bCompare) {
+                this.messages.splice(i, 1);
+                logger.debug(
+                  utils.format(
+                    'The message of pk {0}, nonce {1} has been executed on chain {2}',
+                    message.from,
+                    message.nonce,
+                    this.chainName
+                  )
+                );
+                cbHandler.onMessageExecuted(
+                  this.omniverseChainId,
+                  message.from,
+                  message.nonce
+                );
+                return;
+              }
+            }
+
+            // await substrate.sendTransaction(
+            //   this.api,
+            //   palletName,
+            //   'sendTransaction',
+            //   this.sender,
+            //   [tokenId, message]
+            // );
+            let result = await substrate.enqueueTask(
+              this.queue,
               this.api,
               palletName,
               'sendTransaction',
               this.sender,
               [tokenId, message]
             );
-            this.messages.splice(i, 1);
+            if (result) {
+              this.messages.splice(i, 1);
+            }
             return;
           }
         }
@@ -107,21 +160,113 @@ class SubstrateHandler {
     }
   }
 
+  async beforeRestore() {
+    this.restoreBlockHeight = await this.api.rpc.chain.getBlock();
+  }
+
+  async restore(pendings, cbHandler) {
+    for (let i = 0; i < pendings.length; i++) {
+      let checkItem = (item) => {
+        return item[0] == this.chainName;
+      };
+
+      let item = pendings[i].chains.find(checkItem);
+      if (item) {
+        logger.debug(
+          utils.format(
+            'Transaction has been pushed to chain {0}',
+            this.chainName
+          )
+        );
+        let pk = pendings[i].pk;
+        let tokenId = this.network.tokenId;
+        let nonce = pendings[i].nonce;
+        let palletName = this.network.pallets[0];
+        let message = await substrate.contractCall(
+          this.api,
+          'omniverseProtocol',
+          'transactionRecorder',
+          [pk, palletName, tokenId, nonce]
+        );
+
+        let tokenInfo = await substrate.contractCall(
+          this.api,
+          palletName,
+          'tokensInfo',
+          [tokenId]
+        );
+
+        let m = message.unwrap().txData.toJSON();
+        let payload = this.generalizeData(m);
+        m.payload = payload;
+        m.initiateSC = m.initiatorAddress;
+        delete m.initiatorAddress;
+        let mb = tokenInfo.unwrap().members.toHuman();
+        let members = [];
+        for (let member of mb) {
+          members.push({
+            chainId: member[0],
+            contractAddr: member[1],
+          });
+        }
+        if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+          this.messageBlockHeights.push({
+            from: m.from,
+            nonce: m.nonce,
+            height: item[1],
+          });
+        }
+      } else {
+        logger.debug(
+          utils.format(
+            'Transaction has not been pushed to chain {0}',
+            this.chainName
+          )
+        );
+      }
+    }
+  }
+
   async tryTrigger() {
-    this.pallets.forEach(async (palletName) => {
+    for (let palletName of this.pallets) {
       let [delayedExecutingIndex, delayedIndex] = (
         await substrate.contractCall(this.api, palletName, 'delayedIndex', [])
       ).toJSON();
       if (delayedExecutingIndex < delayedIndex) {
-        await substrate.sendTransaction(
-          this.api,
-          palletName,
-          'triggerExecution',
-          this.sender,
-          []
-        );
+        let delayedTx = (
+          await substrate.contractCall(
+            this.api,
+            palletName,
+            'delayedTransactions',
+            [delayedExecutingIndex]
+          )
+        ).toJSON();
+        let tokenInfo = (
+          await substrate.contractCall(this.api, palletName, 'tokensInfo', [
+            delayedTx.tokenId,
+          ])
+        ).toJSON();
+        let omniTx = (
+          await substrate.contractCall(
+            this.api,
+            'omniverseProtocol',
+            'transactionRecorder',
+            [delayedTx.sender, palletName, delayedTx.tokenId, delayedTx.nonce]
+          )
+        ).toJSON();
+        let currentTime = new Date().getTime() / 1000;
+        if (currentTime >= omniTx.timestamp + tokenInfo.cooldownTime) {
+          await substrate.enqueueTask(
+            this.queue,
+            this.api,
+            palletName,
+            'triggerExecution',
+            this.sender,
+            []
+          );
+        }
       }
-    });
+    }
   }
 
   async getOmniverseEvent(blockHash, cbHandler) {
@@ -168,14 +313,22 @@ class SubstrateHandler {
                   contractAddr: member[1],
                 });
               }
-              this.messageBlockHeights.push({
-                from: m.from,
-                nonce: m.nonce,
-                height: blockNumber,
-              });
-              cbHandler.onMessageSent(this.omniverseChainId, m, members);
-            } else if (event.method == 'TransactionExecuted') {
-              logger.debug('TransactionExecuted event', event.data.toJSON());
+              if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+                this.messageBlockHeights.push({
+                  from: m.from,
+                  nonce: m.nonce,
+                  height: blockNumber,
+                });
+              }
+            } else if (
+              event.method == 'TransactionExecuted' ||
+              event.method == 'TransactionDuplicated'
+            ) {
+              logger.debug(
+                event.method + ' event',
+                this.omniverseChainId,
+                event.data.toJSON()
+              );
               cbHandler.onMessageExecuted(
                 this.omniverseChainId,
                 event.data[0].toHuman(),
@@ -202,7 +355,7 @@ class SubstrateHandler {
     }
 
     if (!height) {
-      logger.error('The block height should not be null');
+      // logger.error('The block height should not be null');
       return;
     }
 
@@ -234,7 +387,7 @@ class SubstrateHandler {
   }
 
   async start(cbHandler) {
-    let fromBlock = stateDB.getValue(this.chainName);
+    let fromBlock = this.restoreBlockHeight || stateDB.getValue(this.chainName);
     let currentBlock = await this.api.rpc.chain.getBlock();
     let currentBlockNumber = currentBlock.block.header.number.toJSON();
     console.log(currentBlockNumber - fromBlock);
@@ -265,7 +418,13 @@ class SubstrateHandler {
       if (this.messageBlockHeights[0].height > currentBlockNumber) {
         stateDB.setValue(self.chainName, currentBlockNumber);
       } else {
-        logger.info('Message waiting to be finalized');
+        logger.info(
+          utils.format(
+            'Chain {0}, Message waiting to be finalized, nonce {1}',
+            this.chainName,
+            this.messageBlockHeights[0].nonce
+          )
+        );
       }
     }
   }
