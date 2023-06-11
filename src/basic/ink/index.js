@@ -57,7 +57,6 @@ class InkHandler {
     // contract
     const omniverseABIRaw = fs.readFileSync(config.get('networks.' + this.chainName + '.abiPath'));
     this.omniverseContract = new ContractPromise(this.api, JSON.parse(omniverseABIRaw), config.get('networks.' + this.chainName + '.omniverseContractAddress'));
-    console.log('this.omniverseContract', this.omniverseContract)
   }
 
   async addMessageToList(message) {
@@ -117,7 +116,7 @@ class InkHandler {
   }
 
   async update() {
-    let signedBlock = await api.rpc.chain.getBlock();
+    let signedBlock = await this.api.rpc.chain.getBlock();
     let signedBlockNumber = signedBlock.block.header.number.toJSON();
     if (this.messageBlockHeights.length == 0) {
       stateDB.setValue(this.chainName, signedBlockNumber);
@@ -133,7 +132,7 @@ class InkHandler {
   }
 
   async beforeRestore() {
-    let signedBlock = await api.rpc.chain.getBlock();
+    let signedBlock = await this.api.rpc.chain.getBlock();
     this.restoreBlockHeight = signedBlock.block.header.number.toJSON();;
   }
 
@@ -187,10 +186,10 @@ class InkHandler {
 
   async tryTrigger() {
     let delayed = await ink.contractCall(this.omniverseContract, 'fungibleToken::getExecutableDelayedTransaction', this.sender.address, []);
-    if (!delayed) {
+    if (delayed) {
       logger.debug(utils.format('Chain {0}, Delayed transaction {1}', this.chainName, delayed));
       let ret = await ink.sendTransaction(
-        this.omniverseContract, 'crossChainBase::triggerExecution', this.sender, []);
+        this.omniverseContract, 'fungibleToken::triggerExecution', this.sender, []);
       if (!ret) {
         logger.debug('ret', ret);
       }
