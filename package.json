@@ -10,7 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@polkadot/api": "^9.10.4",
+    "@polkadot/api": "^9.14.2",
+    "@polkadot/api-contract": "^10.9.1",
     "async": "^3.2.4",
     "config": "^3.3.8",
     "log4js": "^6.7.0",

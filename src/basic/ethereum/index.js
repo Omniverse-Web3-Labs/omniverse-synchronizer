@@ -106,7 +106,7 @@ class EthereumHandler {
         }
       }
       else {
-        console.log('Caching');
+        logger.info('Caching');
       }
     }
   }
