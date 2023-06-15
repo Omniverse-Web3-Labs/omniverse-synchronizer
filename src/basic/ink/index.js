@@ -9,21 +9,21 @@ const ink = require('./ink.js');
 const fs = require('fs');
 const logger = require('../../utils/logger');
 
-// const TypeMap = {
-//   'uint8': u8,
-//   'uint16': u16,
-//   'uint32': u32,
-//   'uint64': u64,
-//   'uint128': u128,
-//   'uint256': u128,
-//   'int8': i8,
-//   'int16': i16,
-//   'int32': i32,
-//   'int64': i64,
-//   'int128': i128,
-//   'int256': i128,
-//   'bytes': Vector<u8>
-// }
+let TypeMap = {
+  'uint8': u8,
+  'uint16': u16,
+  'uint32': u32,
+  'uint64': u64,
+  'uint128': u128,
+  'uint256': u128,
+  'int8': i8,
+  'int16': i16,
+  'int32': i32,
+  'int64': i64,
+  'int128': i128,
+  'int256': i128,
+  'bytes': Vector(u8)
+}
 
 class InkHandler {
   constructor(chainName) {
@@ -60,6 +60,7 @@ class InkHandler {
   }
 
   async addMessageToList(message) {
+    logger.debug('addMessageToList')
     let scaleStruct = {};
     for (let i = 0; i < this.payloadCfg.keys.length; i++) {
       scaleStruct[this.payloadCfg.keys[i]] = TypeMap[this.payloadCfg.types[i]];
@@ -99,7 +100,7 @@ class InkHandler {
 
           let ret = await ink.sendTransaction(
             this.omniverseContract, 'fungibleToken::sendOmniverseTransaction', this.sender, [message]);
-          if (ret != null) {
+          if (ret) {
             this.messages.splice(i, 1);
             logger.debug(utils.format('The message of pk {0}, nonce {1} has been pushed to chain {2}', message.from, message.nonce, this.chainName));
             break;
@@ -160,7 +161,7 @@ class InkHandler {
           }
         } 
         logger.debug('Message is', message);
-        let members = await ink.contractCall(this.omniverseContract, 'omniverse::getMembers', this.sender.address, []);
+        let members = await ink.contractCall(this.omniverseContract, 'fungibleToken::getMembers', this.sender.address, []);
         let data = this.generalizeData(message.txData.payload);
         let m = {
           nonce: message.txData.nonce,
@@ -186,15 +187,16 @@ class InkHandler {
 
   async tryTrigger() {
     let delayed = await ink.contractCall(this.omniverseContract, 'fungibleToken::getExecutableDelayedTransaction', this.sender.address, []);
+    delayed = delayed.toHuman();
     if (delayed) {
-      logger.debug(utils.format('Chain {0}, Delayed transaction {1}', this.chainName, delayed));
+      logger.debug(utils.format('Chain {0}, Delayed transaction {1}', this.chainName, delayed.toString()));
       let ret = await ink.sendTransaction(
         this.omniverseContract, 'fungibleToken::triggerExecution', this.sender, []);
       if (!ret) {
-        logger.debug('ret', ret);
+        // Error
       }
       else {
-        logger.debug('ret', ret);
+        // Succeed
         // logger.debug(receipt.logs[0].topics, receipt.logs[0].data);
         // for (let i = 0; i < receipt.logs.length; i++) {
         //   let log = receipt.logs[i];
@@ -281,63 +283,63 @@ class InkHandler {
       events.forEach(async (record) => {
         // Extract the phase, event and the event types
         const { event } = record;
-        logger.debug('ink event', event);
+        // logger.debug('ink event', event);
         // Show what we are busy with
-        // if (event.section == 'Contracts') {
-        //   if (event.method == 'TransactionSent') {
-        //     let pk = event.data[0].toHuman();
-        //     let tokenId = event.data[1].toHuman();
-        //     let nonce = event.data[2].toHuman();
-        //     let message = await substrate.contractCall(
-        //       this.api,
-        //       'omniverseProtocol',
-        //       'transactionRecorder',
-        //       [pk, palletName, tokenId, nonce]
-        //     );
+        if (event.section == 'contracts') {
+          if (event.method == 'ContractEmitted') {
+            let data = event.data.toJSON();
+            console.log('data', data);
+            if (data[0] == config.get('networks.' + this.chainName + '.omniverseContractAddress')) {
+              console.log(Buffer.from(data[1].slice(2), 'hex'));
+              let decodedEvent = this.omniverseContract.abi.decodeEvent(new Uint8Array(Buffer.from(data[1].slice(2), 'hex')));
+              console.log('decodedEvent', decodedEvent);
+              let pk = decodedEvent.args[0].toHuman();
+              let nonce = decodedEvent.args[1].toHuman();
+              let message = await ink.contractCall(
+                this.omniverseContract,
+                'omniverse::getCachedTransaction',
+                this.sender.address,
+                [pk]
+                );
 
-        //     let tokenInfo = await substrate.contractCall(
-        //       this.api,
-        //       palletName,
-        //       'tokensInfo',
-        //       [tokenId]
-        //     );
-
-        //     let m = message.unwrap().txData.toJSON();
-        //     let payload = this.generalizeData(m);
-        //     m.payload = payload;
-        //     m.initiateSC = m.initiatorAddress;
-        //     delete m.initiatorAddress;
-        //     let mb = tokenInfo.unwrap().members.toHuman();
-        //     let members = [];
-        //     for (let member of mb) {
-        //       members.push({
-        //         chainId: member[0],
-        //         contractAddr: member[1],
-        //       });
-        //     }
-        //     if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
-        //       this.messageBlockHeights.push({
-        //         from: m.from,
-        //         nonce: m.nonce,
-        //         height: blockNumber,
-        //       });
-        //     }
-        //   } else if (
-        //     event.method == 'TransactionExecuted' ||
-        //     event.method == 'TransactionDuplicated'
-        //   ) {
-        //     logger.debug(
-        //       event.method + ' event',
-        //       this.omniverseChainId,
-        //       event.data.toJSON()
-        //     );
-        //     cbHandler.onMessageExecuted(
-        //       this.omniverseChainId,
-        //       event.data[0].toHuman(),
-        //       event.data[1].toHuman()
-        //     );
-        //   }
-        // }
+              if (message.isSome && message.toJSON().txData.nonce == nonce) {
+                message = message.toJSON();
+                console.log(utils.format('Chain: {0}, gets cached transaction', this.chainName));
+              }
+              else {
+                let messageCount = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionCount', this.sender.address, [pk]);
+                if (messageCount > nonce) {
+                  message = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionData', this.sender.address, [pk, nonce]);
+                  message = message.toJSON();
+                }
+                else {
+                  console.log('No transaction got', this.chainName);
+                  return;
+                }
+              }
+              let mb = await ink.contractCall(this.omniverseContract, 'fungibleToken::getMembers', this.sender.address, []);
+              let m = message.txData;
+              let payload = this.generalizeData(m.payload);
+              m.payload = payload;
+              m.initiateSC = m.initiateSc;
+              delete m.initiateSc;
+              let members = [];
+              for (let member of mb) {
+                members.push({
+                  chainId: member.chainId,
+                  contractAddr: member.contractAddress,
+                });
+              }
+              if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+                this.messageBlockHeights.push({
+                  from: m.from,
+                  nonce: m.nonce,
+                  height: blockNumber,
+                });
+              }
+            }
+          }
+        }
       });
     });
   }

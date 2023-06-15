@@ -50,8 +50,13 @@ class chainHandlerMgr {
                 }
             }
         }
-        this.messageObserver[message.from + message.nonce] = task;
-        return true;
+        if (task.taskMembers.length > 0) {
+            this.messageObserver[message.from + message.nonce] = task;
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
     onMessageExecuted(chainId, from, nonce) {
