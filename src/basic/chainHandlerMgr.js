@@ -31,8 +31,8 @@ class chainHandlerMgr {
         return this.chainHandlers[name_];
     }
 
-    onMessageSent(chainId, message, members) {
-        logger.debug('Message sent', chainId, message, members);
+    onMessageSent(chainId, message, members, tokenId) {
+        logger.debug('Message sent', chainId, message, members, tokenId);
         if (this.messageObserver[message.from + message.nonce]) {
             return false;
         }
@@ -45,17 +45,17 @@ class chainHandlerMgr {
         for (let j in members) {
             if (chainId != members[j].chainId) {
                 if (this.chainHandlers[members[j].chainId]) {
-                    this.chainHandlers[members[j].chainId].addMessageToList(message);
+                    this.chainHandlers[members[j].chainId].addMessageToList(message, tokenId);
                     task.taskMembers.push(members[j].chainId);
                 }
             }
         }
-        this.messageObserver[message.from + message.nonce] = task;
+        this.messageObserver[message.from + message.nonce + tokenId] = task;
         return true;
     }
 
-    onMessageExecuted(chainId, from, nonce) {
-        let task = this.messageObserver[from + nonce];
+    onMessageExecuted(chainId, from, nonce, tokenId) {
+        let task = this.messageObserver[from + nonce + tokenId];
         if (!task) {
             logger.error('This case should not appear');
             return;
@@ -81,7 +81,7 @@ class chainHandlerMgr {
 
         if (task.taskMembers.length == 0) {
             for (let i in this.chainHandlers) {
-                this.chainHandlers[i].messageFinalized(from, nonce);
+                this.chainHandlers[i].messageFinalized(from, nonce, tokenId);
             }
         }
     }
@@ -128,21 +128,24 @@ class chainHandlerMgr {
             for (let i in this.chainHandlers) {
                 await this.chainHandlers[i].beforeRestore();
             }
-
-            let res = request('GET', config.get("database"));
-            if (res && res.statusCode == 200) {
-                let body = res.getBody();
-                let pendings = JSON.parse(body);
-                if (pendings.code != 0) {
-                    logger.error('Restore failed', pendings.message);
-                    return;
+            try {
+                let res = request('GET', config.get("database"));
+                if (res && res.statusCode == 200) {
+                    let body = res.getBody();
+                    let pendings = JSON.parse(body);
+                    if (pendings.code != 0) {
+                        logger.error('Restore failed', pendings.message);
+                        return;
+                    }
+                    for (let i in this.chainHandlers) {
+                        await this.chainHandlers[i].restore(pendings.message, this);
+                    }
                 }
-                for (let i in this.chainHandlers) {
-                    await this.chainHandlers[i].restore(pendings.message, this);
+                else {
+                    global.logger.info('Result error', res);
                 }
-            }
-            else {
-                global.logger.info('Result error', res);
+            } catch (err) {
+                global.logger.error('connect refuse: ', err.message);
             }
         }
         else {
