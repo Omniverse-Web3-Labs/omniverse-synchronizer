@@ -52,7 +52,7 @@ class EthereumHandler {
     let omniverseContractAbi = JSON.parse(omniverseContractRawData).abi;
     this.omniverseContractContract = {};
     for (let tokenId in omniverseContractAddress) {
-      logger.error("tokenId", tokenId, omniverseContractAddress[tokenId]);
+      logger.error('tokenId', tokenId, omniverseContractAddress[tokenId]);
       let contract = new this.web3.eth.Contract(
         omniverseContractAbi,
         omniverseContractAddress[tokenId]
@@ -143,14 +143,14 @@ class EthereumHandler {
                   message.from,
                   message.nonce,
                   this.chainName,
-                  tokenId,
+                  tokenId
                 )
               );
               cbHandler.onMessageExecuted(
                 this.omniverseChainId,
                 message.from,
                 message.nonce,
-                tokenId,
+                tokenId
               );
               return;
             }
@@ -181,7 +181,7 @@ class EthereumHandler {
           logger.info(utils.format('Chain: {0} Cooling down', this.chainName));
         }
       } else {
-        console.log('Caching');
+        logger.info('Caching');
       }
     }
   }
@@ -222,10 +222,7 @@ class EthereumHandler {
         contract = this.omniverseContractContract[tokenId];
       } else {
         logger.error(
-          utils.format(
-            'The contract of {0} yet been initialized.',
-            tokenId
-          )
+          utils.format('The contract of {0} yet been initialized.', tokenId)
         );
       }
       if (item) {
@@ -278,12 +275,7 @@ class EthereumHandler {
           signature: message.txData.signature,
         };
         if (
-          cbHandler.onMessageSent(
-            this.omniverseChainId,
-            m,
-            members,
-            tokenId
-          )
+          cbHandler.onMessageSent(this.omniverseChainId, m, members, tokenId)
         ) {
           this.messageBlockHeights.push({
             from: pendings[i].pk,
@@ -377,7 +369,7 @@ class EthereumHandler {
     for (let i = 0; i < this.messageBlockHeights.length; i++) {
       if (
         this.messageBlockHeights[i].from == from &&
-        this.messageBlockHeights[i].nonce == nonce&&
+        this.messageBlockHeights[i].nonce == nonce &&
         this.messageBlockHeights[i].tokenId == tokenId
       ) {
         height = this.messageBlockHeights[i].height;
@@ -469,12 +461,7 @@ class EthereumHandler {
             signature: message.txData.signature,
           };
           if (
-            cbHandler.onMessageSent(
-              this.omniverseChainId,
-              m,
-              members,
-              tokenId
-            )
+            cbHandler.onMessageSent(this.omniverseChainId, m, members, tokenId)
           ) {
             this.messageBlockHeights.push({
               from: event.returnValues.pk,
