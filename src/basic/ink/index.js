@@ -62,15 +62,26 @@ class InkHandler {
   async addMessageToList(message) {
     logger.debug('addMessageToList')
     let scaleStruct = {};
+    let convertedPayload = {};
     for (let i = 0; i < this.payloadCfg.keys.length; i++) {
       scaleStruct[this.payloadCfg.keys[i]] = TypeMap[this.payloadCfg.types[i]];
+      if (this.payloadCfg.types[i].includes('bytes')) {
+        convertedPayload[this.payloadCfg.keys[i]] = message.payload[this.payloadCfg.keys[i]];
+      }
+      else if (this.payloadCfg.types[i].includes('int64') || this.payloadCfg.types[i].includes('int128') || this.payloadCfg.types[i].includes('int256')) {
+        convertedPayload[this.payloadCfg.keys[i]] = BigInt(message.payload[this.payloadCfg.keys[i]]);
+      }
+      else {
+        convertedPayload[this.payloadCfg.keys[i]] = parseInt(message.payload[this.payloadCfg.keys[i]]);
+      }
     }
     let scalePayload = Struct(scaleStruct);
-    let payload = utils.toHexString(scalePayload.enc(message.payload));
+    console.log('convertedPayload', convertedPayload)
+    let payload = utils.toHexString(scalePayload.enc(convertedPayload));
 
     this.messages.push({
       nonce: message.nonce,
-      initiateSC: message.initiateSC,
+      initiateSc: message.initiateSC,
       from: message.from,
       chainId: message.chainId,
       payload: payload,
@@ -84,11 +95,11 @@ class InkHandler {
       let nonce = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionCount', this.sender.address, [message.from]);
       if (nonce >= message.nonce) {
         let txData = await ink.contractCall(this.omniverseContract, 'omniverse::getCachedTransaction', this.sender.address, [message.from]);
-        if (txData.isNone()) {
+        if (txData.isNone) {
           // message exists
           if (nonce > message.nonce) {
             let hisData = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionData', this.sender.address, [message.from, message.nonce]).unwrap();
-            let bCompare = (hisData.txData.nonce == message.nonce) && (hisData.txData.chainId == message.chainId) && (hisData.txData.initiateSC == message.initiateSC) &&
+            let bCompare = (hisData.txData.nonce == message.nonce) && (hisData.txData.chainId == message.chainId) && (hisData.txData.initiateSc == message.initiateSc) &&
             (hisData.txData.from == message.from) && (hisData.txData.payload == message.payload) && (hisData.txData.signature == message.signature);
             if (bCompare) {
               this.messages.splice(i, 1);
@@ -166,7 +177,7 @@ class InkHandler {
         let m = {
           nonce: message.txData.nonce,
           chainId: message.txData.chainId,
-          initiateSC: message.txData.initiateSC,
+          initiateSC: message.txData.initiateSc,
           from: message.txData.from,
           payload: data,
           signature: message.txData.signature,
