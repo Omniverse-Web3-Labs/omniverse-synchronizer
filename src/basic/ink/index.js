@@ -172,7 +172,7 @@ class InkHandler {
           }
         } 
         logger.debug('Message is', message);
-        let members = await ink.contractCall(this.omniverseContract, 'fungibleToken::getMembers', this.sender.address, []);
+        let mb = await ink.contractCall(this.omniverseContract, 'fungibleToken::getMembers', this.sender.address, []);
         let data = this.generalizeData(message.txData.payload);
         let m = {
           nonce: message.txData.nonce,
@@ -181,6 +181,13 @@ class InkHandler {
           from: message.txData.from,
           payload: data,
           signature: message.txData.signature,
+        }
+        let members = [];
+        for (let member of mb) {
+          members.push({
+            chainId: member.chainId.toString(),
+            contractAddr: utils.toHexString(member.contractAddress),
+          });
         }
         if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
           this.messageBlockHeights.push({
@@ -304,49 +311,54 @@ class InkHandler {
               console.log(Buffer.from(data[1].slice(2), 'hex'));
               let decodedEvent = this.omniverseContract.abi.decodeEvent(new Uint8Array(Buffer.from(data[1].slice(2), 'hex')));
               console.log('decodedEvent', decodedEvent);
-              let pk = decodedEvent.args[0].toHuman();
-              let nonce = decodedEvent.args[1].toHuman();
-              let message = await ink.contractCall(
-                this.omniverseContract,
-                'omniverse::getCachedTransaction',
-                this.sender.address,
-                [pk]
-                );
+              if (decodedEvent.event.identifier == 'TransactionSent') {
+                let pk = decodedEvent.args[0].toHuman();
+                let nonce = decodedEvent.args[1].toHuman();
+                let message = await ink.contractCall(
+                  this.omniverseContract,
+                  'omniverse::getCachedTransaction',
+                  this.sender.address,
+                  [pk]
+                  );
 
-              if (message.isSome && message.toJSON().txData.nonce == nonce) {
-                message = message.toJSON();
-                console.log(utils.format('Chain: {0}, gets cached transaction', this.chainName));
-              }
-              else {
-                let messageCount = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionCount', this.sender.address, [pk]);
-                if (messageCount > nonce) {
-                  message = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionData', this.sender.address, [pk, nonce]);
+                if (message.isSome && message.toJSON().txData.nonce == nonce) {
                   message = message.toJSON();
+                  console.log(utils.format('Chain: {0}, gets cached transaction', this.chainName));
                 }
                 else {
-                  console.log('No transaction got', this.chainName);
-                  return;
+                  let messageCount = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionCount', this.sender.address, [pk]);
+                  if (messageCount > nonce) {
+                    message = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionData', this.sender.address, [pk, nonce]);
+                    message = message.toJSON();
+                  }
+                  else {
+                    console.log('No transaction got', this.chainName);
+                    return;
+                  }
+                }
+                let mb = await ink.contractCall(this.omniverseContract, 'fungibleToken::getMembers', this.sender.address, []);
+                let m = message.txData;
+                let payload = this.generalizeData(m.payload);
+                m.payload = payload;
+                m.initiateSC = m.initiateSc;
+                delete m.initiateSc;
+                let members = [];
+                for (let member of mb) {
+                  members.push({
+                    chainId: member.chainId.toString(),
+                    contractAddr: utils.toHexString(member.contractAddress),
+                  });
+                }
+                if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+                  this.messageBlockHeights.push({
+                    from: m.from,
+                    nonce: m.nonce,
+                    height: blockNumber,
+                  });
                 }
               }
-              let mb = await ink.contractCall(this.omniverseContract, 'fungibleToken::getMembers', this.sender.address, []);
-              let m = message.txData;
-              let payload = this.generalizeData(m.payload);
-              m.payload = payload;
-              m.initiateSC = m.initiateSc;
-              delete m.initiateSc;
-              let members = [];
-              for (let member of mb) {
-                members.push({
-                  chainId: member.chainId,
-                  contractAddr: member.contractAddress,
-                });
-              }
-              if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
-                this.messageBlockHeights.push({
-                  from: m.from,
-                  nonce: m.nonce,
-                  height: blockNumber,
-                });
+              else if (decodedEvent.event.identifier == 'TransactionDuplicated' || decodedEvent.event.identifier == 'TransactionExecuted') {
+                cbHandler.onMessageExecuted(this.omniverseChainId, decodedEvent.args[0].toHuman(), decodedEvent.args[1].toHuman());
               }
             }
           }
