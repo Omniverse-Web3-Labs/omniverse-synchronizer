@@ -49,7 +49,7 @@ sed -i "s/VERSION/${VERSION}/g" ./docker/docker-compose.yaml
 # Generate launch script
 echo "#!/bin/bash
 
-# mkdir -p /opt/omniverse/node/$CATAGORY/$NAME/$VERSION/config
+mkdir -p /opt/omniverse/node/$CATAGORY/$NAME/$VERSION/config
 cp docker/docker-compose.yaml /opt/omniverse/node/$CATAGORY/$NAME/$VERSION
 cd /opt/omniverse/node/$CATAGORY/$NAME/$VERSION/
 docker-compose -p $CATAGORY-$NAME -f docker-compose.yaml up -d
