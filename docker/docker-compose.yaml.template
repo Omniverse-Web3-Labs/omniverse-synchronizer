@@ -4,7 +4,7 @@ services:
     image: 'omniverse/CATAGORY-NAME:VERSION'
     network_mode: host
     volumes:
-      - '/opt/omniverse/node/CATAGORY/NAME/VERSION/config/.secret:/opt/omniverse/node/config/.secret'
+      # - '/opt/omniverse/node/CATAGORY/NAME/VERSION/config/.secret:/opt/omniverse/node/config/.secret'
     command:
       - 'npm run start'
     logging:
