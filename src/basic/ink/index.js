@@ -1,8 +1,27 @@
 'use strict';
 
-const {ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
+const { ApiPromise, WsProvider, Keyring } = require('@polkadot/api');
 const { Abi, ContractPromise } = require('@polkadot/api-contract');
-const { bool, _void, str, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Enum, Struct, Vector, Option, Bytes } = require('scale-ts');
+const {
+  bool,
+  _void,
+  str,
+  u8,
+  u16,
+  u32,
+  u64,
+  u128,
+  i8,
+  i16,
+  i32,
+  i64,
+  i128,
+  Enum,
+  Struct,
+  Vector,
+  Option,
+  Bytes,
+} = require('scale-ts');
 const utils = require('../../utils/utils');
 const config = require('config');
 const ink = require('./ink.js');
@@ -10,32 +29,43 @@ const fs = require('fs');
 const logger = require('../../utils/logger');
 
 let TypeMap = {
-  'uint8': u8,
-  'uint16': u16,
-  'uint32': u32,
-  'uint64': u64,
-  'uint128': u128,
-  'uint256': u128,
-  'int8': i8,
-  'int16': i16,
-  'int32': i32,
-  'int64': i64,
-  'int128': i128,
-  'int256': i128,
-  'bytes': Vector(u8)
-}
+  uint8: u8,
+  uint16: u16,
+  uint32: u32,
+  uint64: u64,
+  uint128: u128,
+  uint256: u128,
+  int8: i8,
+  int16: i16,
+  int32: i32,
+  int64: i64,
+  int128: i128,
+  int256: i128,
+  bytes: Vector(u8),
+};
 
 class InkHandler {
   constructor(chainName) {
     this.chainName = chainName;
+    this.tokenId = {};
   }
 
   async init() {
-    logger.info(utils.format("Init handler: {0}, compatible chain: {1}", this.chainName, "ink"));
+    logger.info(
+      utils.format(
+        'Init handler: {0}, compatible chain: {1}',
+        this.chainName,
+        'ink'
+      )
+    );
     // network
-    this.provider = new WsProvider(config.get('networks.' + this.chainName + '.nodeAddress'));
-    this.api = await ApiPromise.create({provider: this.provider});
-    this.omniverseChainId = config.get('networks.' + this.chainName + '.omniverseChainId');
+    this.provider = new WsProvider(
+      config.get('networks.' + this.chainName + '.nodeAddress')
+    );
+    this.api = await ApiPromise.create({ provider: this.provider });
+    this.omniverseChainId = config.get(
+      'networks.' + this.chainName + '.omniverseChainId'
+    );
     this.messageBlockHeights = [];
 
     this.payloadCfg = config.get('payload');
@@ -45,38 +75,60 @@ class InkHandler {
     let secret = JSON.parse(fs.readFileSync(config.get('secret')));
     const keyring = new Keyring({ type: 'sr25519' });
     // private key
-    if (typeof(secret[this.chainName]) == 'string') {
+    if (typeof secret[this.chainName] == 'string') {
       this.sender = keyring.addFromSeed(secret[this.chainName]);
-    }
-    else {
-      this.sender = keyring.addFromJson(JSON.parse(secret[this.chainName].backup));
+    } else {
+      this.sender = keyring.addFromJson(
+        JSON.parse(secret[this.chainName].backup)
+      );
       this.sender.decodePkcs8(secret[this.chainName].password);
     }
     logger.info('Porter address is: ' + this.sender.address);
 
     // contract
-    const omniverseABIRaw = fs.readFileSync(config.get('networks.' + this.chainName + '.abiPath'));
-    this.omniverseContract = new ContractPromise(this.api, JSON.parse(omniverseABIRaw), config.get('networks.' + this.chainName + '.omniverseContractAddress'));
+    const omniverseABIRaw = fs.readFileSync(
+      config.get('networks.' + this.chainName + '.abiPath')
+    );
+    let omniverseContractAddress = config.get(
+      'networks.' + this.chainName + '.omniverseContractAddress'
+    );
+    this.omniverseContract = {};
+    for (let tokenId in omniverseContractAddress) {
+      let contract = new ContractPromise(
+        this.api,
+        JSON.parse(omniverseABIRaw),
+        omniverseContractAddress[tokenId]
+      );
+      this.omniverseContract[tokenId] = contract;
+      this.tokenId[omniverseContractAddress[tokenId]] = tokenId;
+    }
   }
 
-  async addMessageToList(message) {
-    logger.debug('addMessageToList')
+  async addMessageToList(message, tokenId) {
+    logger.debug('addMessageToList');
     let scaleStruct = {};
     let convertedPayload = {};
     for (let i = 0; i < this.payloadCfg.keys.length; i++) {
       scaleStruct[this.payloadCfg.keys[i]] = TypeMap[this.payloadCfg.types[i]];
       if (this.payloadCfg.types[i].includes('bytes')) {
-        convertedPayload[this.payloadCfg.keys[i]] = message.payload[this.payloadCfg.keys[i]];
-      }
-      else if (this.payloadCfg.types[i].includes('int64') || this.payloadCfg.types[i].includes('int128') || this.payloadCfg.types[i].includes('int256')) {
-        convertedPayload[this.payloadCfg.keys[i]] = BigInt(message.payload[this.payloadCfg.keys[i]]);
-      }
-      else {
-        convertedPayload[this.payloadCfg.keys[i]] = parseInt(message.payload[this.payloadCfg.keys[i]]);
+        convertedPayload[this.payloadCfg.keys[i]] =
+          message.payload[this.payloadCfg.keys[i]];
+      } else if (
+        this.payloadCfg.types[i].includes('int64') ||
+        this.payloadCfg.types[i].includes('int128') ||
+        this.payloadCfg.types[i].includes('int256')
+      ) {
+        convertedPayload[this.payloadCfg.keys[i]] = BigInt(
+          message.payload[this.payloadCfg.keys[i]]
+        );
+      } else {
+        convertedPayload[this.payloadCfg.keys[i]] = parseInt(
+          message.payload[this.payloadCfg.keys[i]]
+        );
       }
     }
     let scalePayload = Struct(scaleStruct);
-    console.log('convertedPayload', convertedPayload)
+    console.log('convertedPayload', convertedPayload);
     let payload = utils.toHexString(scalePayload.enc(convertedPayload));
 
     this.messages.push({
@@ -86,42 +138,88 @@ class InkHandler {
       chainId: message.chainId,
       payload: payload,
       signature: message.signature,
+      tokenId,
     });
   }
 
   async pushMessages(cbHandler) {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
-      let nonce = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionCount', this.sender.address, [message.from]);
+      let tokenId = message.tokenId;
+      let contract = this.omniverseContract[tokenId];
+      let nonce = await ink.contractCall(
+        contract,
+        'omniverse::getTransactionCount',
+        this.sender.address,
+        [message.from]
+      );
       if (nonce >= message.nonce) {
-        let txData = await ink.contractCall(this.omniverseContract, 'omniverse::getCachedTransaction', this.sender.address, [message.from]);
+        let txData = await ink.contractCall(
+          contract,
+          'omniverse::getCachedTransaction',
+          this.sender.address,
+          [message.from]
+        );
         if (txData.isNone) {
           // message exists
           if (nonce > message.nonce) {
-            let hisData = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionData', this.sender.address, [message.from, message.nonce]).unwrap();
-            let bCompare = (hisData.txData.nonce == message.nonce) && (hisData.txData.chainId == message.chainId) && (hisData.txData.initiateSc == message.initiateSc) &&
-            (hisData.txData.from == message.from) && (hisData.txData.payload == message.payload) && (hisData.txData.signature == message.signature);
+            let hisData = (await ink
+              .contractCall(
+                contract,
+                'omniverse::getTransactionData',
+                this.sender.address,
+                [message.from, message.nonce]
+            )).toJSON();
+            let bCompare =
+              hisData.txData.nonce == message.nonce &&
+              hisData.txData.chainId == message.chainId &&
+              hisData.txData.initiateSc == message.initiateSc &&
+              hisData.txData.from == message.from &&
+              hisData.txData.payload == message.payload &&
+              hisData.txData.signature == message.signature;
             if (bCompare) {
               this.messages.splice(i, 1);
-              logger.debug(utils.format('The message of pk {0}, nonce {1} has been executed on chain {2}', message.from, message.nonce, this.chainName));
-              cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce);
+              logger.debug(
+                utils.format(
+                  'The message of pk {0}, nonce {1} has been executed on chain {2}',
+                  message.from,
+                  message.nonce,
+                  this.chainName
+                )
+              );
+              cbHandler.onMessageExecuted(
+                this.omniverseChainId,
+                message.from,
+                message.nonce,
+                tokenId
+              );
               return;
             }
           }
-
+          delete message.tokenId;
+          logger.error('ink sendOmniverseTransaction', message);
           let ret = await ink.sendTransaction(
-            this.omniverseContract, 'fungibleToken::sendOmniverseTransaction', this.sender, [message]);
+            contract,
+            'fungibleToken::sendOmniverseTransaction',
+            this.sender,
+            [message]
+          );
           if (ret) {
             this.messages.splice(i, 1);
-            logger.debug(utils.format('The message of pk {0}, nonce {1} has been pushed to chain {2}', message.from, message.nonce, this.chainName));
+            logger.debug(
+              utils.format(
+                'The message of pk {0}, nonce {1} has been pushed to chain {2}',
+                message.from,
+                message.nonce,
+                this.chainName
+              )
+            );
             break;
           }
-        }
-        else {
+        } else {
           logger.info(utils.format('Chain: {0} Cooling down', this.chainName));
         }
-      }
-      else {
+      } else {
         logger.info('Caching');
       }
     }
@@ -132,47 +230,94 @@ class InkHandler {
     let signedBlockNumber = signedBlock.block.header.number.toJSON();
     if (this.messageBlockHeights.length == 0) {
       stateDB.setValue(this.chainName, signedBlockNumber);
-    }
-    else {
+    } else {
       if (this.messageBlockHeights[0].height > signedBlockNumber) {
         stateDB.setValue(self.chainName, signedBlockNumber);
-      }
-      else {
-        logger.info(utils.format('Chain {0}, Message waiting to be finalized, nonce {1}', this.chainName, this.messageBlockHeights[0].nonce));
+      } else {
+        logger.info(
+          utils.format(
+            'Chain {0}, Message waiting to be finalized, nonce {1}',
+            this.chainName,
+            this.messageBlockHeights[0].nonce
+          )
+        );
       }
     }
   }
 
   async beforeRestore() {
     let signedBlock = await this.api.rpc.chain.getBlock();
-    this.restoreBlockHeight = signedBlock.block.header.number.toJSON();;
+    this.restoreBlockHeight = signedBlock.block.header.number.toJSON();
   }
 
   async restore(pendings, cbHandler) {
     for (let i = 0; i < pendings.length; i++) {
       let checkItem = (item) => {
         return item[0] == this.chainName;
-      }
+      };
 
       let item = pendings[i].chains.find(checkItem);
+      let tokenId = pendings[i].tokenId;
+      let contract;
+      if (Object.keys(this.omniverseContract).includes(tokenId)) {
+        contract = this.omniverseContract[tokenId];
+      } else {
+        logger.error(
+          utils.format('The contract of {0} yet been initialized.', tokenId)
+        );
+        return;
+      }
       if (item) {
-        logger.debug(utils.format('Transaction has been pushed to chain {0}', this.chainName));
+        logger.debug(
+          utils.format(
+            'Transaction has been pushed to chain {0}',
+            this.chainName
+          )
+        );
         let message;
-        let nonce = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionCount', this.sender.address, [message.from]);
+        let nonce = await ink.contractCall(
+          contract,
+          'omniverse::getTransactionCount',
+          this.sender.address,
+          [message.from]
+        );
         logger.debug('nonce', nonce);
         if (nonce > pendings[i].nonce) {
-          message = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionData', this.sender.address, [message.from, message.nonce]).unwrap();
-        }
-        else {
-          message = await ink.contractCall(this.omniverseContract, 'omniverse::getCachedTransaction', this.sender.address, [message.from]);
+          message = await ink
+            .contractCall(
+              contract,
+              'omniverse::getTransactionData',
+              this.sender.address,
+              [message.from, message.nonce]
+            )
+            .unwrap();
+        } else {
+          message = await ink.contractCall(
+            contract,
+            'omniverse::getCachedTransaction',
+            this.sender.address,
+            [message.from]
+          );
           logger.debug('cached message', message);
           if (message.txData.nonce != pendings[i].nonce) {
-            logger.error(utils.format('Chain {0} Restore work failed, pk {1}, nonce {2}', this.chainName, pendings[i].pk, pendings[i].nonce));
+            logger.error(
+              utils.format(
+                'Chain {0} Restore work failed, pk {1}, nonce {2}',
+                this.chainName,
+                pendings[i].pk,
+                pendings[i].nonce
+              )
+            );
             throw 'Restore failed';
           }
-        } 
+        }
         logger.debug('Message is', message);
-        let mb = await ink.contractCall(this.omniverseContract, 'fungibleToken::getMembers', this.sender.address, []);
+        let mb = await ink.contractCall(
+          contract,
+          'fungibleToken::getMembers',
+          this.sender.address,
+          []
+        );
         let data = this.generalizeData(message.txData.payload);
         let m = {
           nonce: message.txData.nonce,
@@ -181,7 +326,7 @@ class InkHandler {
           from: message.txData.from,
           payload: data,
           signature: message.txData.signature,
-        }
+        };
         let members = [];
         for (let member of mb) {
           members.push({
@@ -189,43 +334,67 @@ class InkHandler {
             contractAddr: utils.toHexString(member.contractAddress),
           });
         }
-        if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+        if (
+          cbHandler.onMessageSent(this.omniverseChainId, m, members, tokenId)
+        ) {
           this.messageBlockHeights.push({
             from: pendings[i].pk,
             nonce: pendings[i].nonce,
-            height: item[1]
+            height: item[1],
+            tokenId,
           });
         }
-      }
-      else {
-        logger.debug(utils.format('Transaction has not been pushed to chain {0}', this.chainName));
+      } else {
+        logger.debug(
+          utils.format(
+            'Transaction has not been pushed to chain {0}',
+            this.chainName
+          )
+        );
       }
     }
   }
 
   async tryTrigger() {
-    let delayed = await ink.contractCall(this.omniverseContract, 'fungibleToken::getExecutableDelayedTransaction', this.sender.address, []);
-    delayed = delayed.toHuman();
-    if (delayed) {
-      logger.debug(utils.format('Chain {0}, Delayed transaction {1}', this.chainName, delayed.toString()));
-      let ret = await ink.sendTransaction(
-        this.omniverseContract, 'fungibleToken::triggerExecution', this.sender, []);
-      if (!ret) {
-        // Error
-      }
-      else {
-        // Succeed
-        // logger.debug(receipt.logs[0].topics, receipt.logs[0].data);
-        // for (let i = 0; i < receipt.logs.length; i++) {
-        //   let log = receipt.logs[i];
-        //   if (log.address == this.omniverseContractContract._address) {
-        //     if (log.topics[0] == this.eventOmniverseTokenTransfer.signature) {
-        //       let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenTransfer.inputs, log.data, log.topics.slice(1));
-        //       logger.info(utils.format('Execute OmniverseTransfer successfully: {0} transfer {1} to {2}.',
-        //         decodedLog.from, decodedLog.value, decodedLog.to));
-        //     }
-        //   }
-        // }
+    for (let tokenId in this.omniverseContract) {
+      let contract = this.omniverseContract[tokenId];
+      let delayed = await ink.contractCall(
+        contract,
+        'fungibleToken::getExecutableDelayedTransaction',
+        this.sender.address,
+        []
+      );
+      delayed = delayed.toHuman();
+      if (delayed) {
+        logger.debug(
+          utils.format(
+            'Chain {0}, Delayed transaction {1}',
+            this.chainName,
+            delayed.toString()
+          )
+        );
+        let ret = await ink.sendTransaction(
+          contract,
+          'fungibleToken::triggerExecution',
+          this.sender,
+          []
+        );
+        if (!ret) {
+          // Error
+        } else {
+          // Succeed
+          // logger.debug(receipt.logs[0].topics, receipt.logs[0].data);
+          // for (let i = 0; i < receipt.logs.length; i++) {
+          //   let log = receipt.logs[i];
+          //   if (log.address == this.omniverseContractContract._address) {
+          //     if (log.topics[0] == this.eventOmniverseTokenTransfer.signature) {
+          //       let decodedLog = this.web3.eth.abi.decodeLog(this.eventOmniverseTokenTransfer.inputs, log.data, log.topics.slice(1));
+          //       logger.info(utils.format('Execute OmniverseTransfer successfully: {0} transfer {1} to {2}.',
+          //         decodedLog.from, decodedLog.value, decodedLog.to));
+          //     }
+          //   }
+          // }
+        }
       }
     }
   }
@@ -245,7 +414,10 @@ class InkHandler {
   async messageFinalized(from, nonce) {
     let height;
     for (let i = 0; i < this.messageBlockHeights.length; i++) {
-      if (this.messageBlockHeights[i].from == from && this.messageBlockHeights[i].nonce == nonce) {
+      if (
+        this.messageBlockHeights[i].from == from &&
+        this.messageBlockHeights[i].nonce == nonce
+      ) {
         height = this.messageBlockHeights[i].height;
         this.messageBlockHeights.splice(i, 1);
         break;
@@ -307,36 +479,58 @@ class InkHandler {
           if (event.method == 'ContractEmitted') {
             let data = event.data.toJSON();
             console.log('data', data);
-            if (data[0] == config.get('networks.' + this.chainName + '.omniverseContractAddress')) {
+            if (Object.keys(this.tokenId).includes(data[0])) {
+              // data[0] == config.get('networks.' + this.chainName + '.omniverseContractAddress')
+              let tokenId = this.tokenId[data[0]];
+              let contract = this.omniverseContract[tokenId];
               console.log(Buffer.from(data[1].slice(2), 'hex'));
-              let decodedEvent = this.omniverseContract.abi.decodeEvent(new Uint8Array(Buffer.from(data[1].slice(2), 'hex')));
-              console.log('decodedEvent', decodedEvent);
+              let decodedEvent = contract.abi.decodeEvent(
+                new Uint8Array(Buffer.from(data[1].slice(2), 'hex'))
+              );
               if (decodedEvent.event.identifier == 'TransactionSent') {
                 let pk = decodedEvent.args[0].toHuman();
                 let nonce = decodedEvent.args[1].toHuman();
                 let message = await ink.contractCall(
-                  this.omniverseContract,
+                  contract,
                   'omniverse::getCachedTransaction',
                   this.sender.address,
                   [pk]
-                  );
+                );
 
                 if (message.isSome && message.toJSON().txData.nonce == nonce) {
                   message = message.toJSON();
-                  console.log(utils.format('Chain: {0}, gets cached transaction', this.chainName));
-                }
-                else {
-                  let messageCount = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionCount', this.sender.address, [pk]);
+                  console.log(
+                    utils.format(
+                      'Chain: {0}, gets cached transaction',
+                      this.chainName
+                    )
+                  );
+                } else {
+                  let messageCount = await ink.contractCall(
+                    contract,
+                    'omniverse::getTransactionCount',
+                    this.sender.address,
+                    [pk]
+                  );
                   if (messageCount > nonce) {
-                    message = await ink.contractCall(this.omniverseContract, 'omniverse::getTransactionData', this.sender.address, [pk, nonce]);
+                    message = await ink.contractCall(
+                      contract,
+                      'omniverse::getTransactionData',
+                      this.sender.address,
+                      [pk, nonce]
+                    );
                     message = message.toJSON();
-                  }
-                  else {
+                  } else {
                     console.log('No transaction got', this.chainName);
                     return;
                   }
                 }
-                let mb = await ink.contractCall(this.omniverseContract, 'fungibleToken::getMembers', this.sender.address, []);
+                let mb = await ink.contractCall(
+                  contract,
+                  'fungibleToken::getMembers',
+                  this.sender.address,
+                  []
+                );
                 let m = message.txData;
                 let payload = this.generalizeData(m.payload);
                 m.payload = payload;
@@ -349,16 +543,31 @@ class InkHandler {
                     contractAddr: utils.toHexString(member.contractAddress),
                   });
                 }
-                if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+                if (
+                  cbHandler.onMessageSent(
+                    this.omniverseChainId,
+                    m,
+                    members,
+                    tokenId
+                  )
+                ) {
                   this.messageBlockHeights.push({
                     from: m.from,
                     nonce: m.nonce,
                     height: blockNumber,
+                    tokenId,
                   });
                 }
-              }
-              else if (decodedEvent.event.identifier == 'TransactionDuplicated' || decodedEvent.event.identifier == 'TransactionExecuted') {
-                cbHandler.onMessageExecuted(this.omniverseChainId, decodedEvent.args[0].toHuman(), decodedEvent.args[1].toHuman());
+              } else if (
+                decodedEvent.event.identifier == 'TransactionDuplicated' ||
+                decodedEvent.event.identifier == 'TransactionExecuted'
+              ) {
+                cbHandler.onMessageExecuted(
+                  this.omniverseChainId,
+                  decodedEvent.args[0].toHuman(),
+                  decodedEvent.args[1].toHuman(),
+                  tokenId
+                );
               }
             }
           }

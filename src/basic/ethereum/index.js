@@ -50,14 +50,13 @@ class EthereumHandler {
       config.get('networks.' + this.chainName + '.omniverseContractAbiPath')
     );
     let omniverseContractAbi = JSON.parse(omniverseContractRawData).abi;
-    this.omniverseContractContract = {};
+    this.omniverseContract = {};
     for (let tokenId in omniverseContractAddress) {
-      logger.error('tokenId', tokenId, omniverseContractAddress[tokenId]);
       let contract = new this.web3.eth.Contract(
         omniverseContractAbi,
         omniverseContractAddress[tokenId]
       );
-      this.omniverseContractContract[tokenId] = contract;
+      this.omniverseContract[tokenId] = contract;
     }
 
     this.chainId = config.get('networks.' + this.chainName + '.chainId');
@@ -112,7 +111,7 @@ class EthereumHandler {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
       let tokenId = message.tokenId;
-      let contract = this.omniverseContractContract[tokenId];
+      let contract = this.omniverseContract[tokenId];
       let nonce = await ethereum.contractCall(contract, 'getTransactionCount', [
         message.from,
       ]);
@@ -218,12 +217,13 @@ class EthereumHandler {
       let item = pendings[i].chains.find(checkItem);
       let tokenId = pendings[i].tokenId;
       let contract;
-      if (Object.keys(this.omniverseContractContract).includes(tokenId)) {
-        contract = this.omniverseContractContract[tokenId];
+      if (Object.keys(this.omniverseContract).includes(tokenId)) {
+        contract = this.omniverseContract[tokenId];
       } else {
         logger.error(
           utils.format('The contract of {0} yet been initialized.', tokenId)
         );
+        return;
       }
       if (item) {
         logger.debug(
@@ -295,8 +295,8 @@ class EthereumHandler {
   }
 
   async tryTrigger() {
-    for (let tokenId in this.omniverseContractContract) {
-      let contract = this.omniverseContractContract[tokenId];
+    for (let tokenId in this.omniverseContract) {
+      let contract = this.omniverseContract[tokenId];
       let ret = await ethereum.contractCall(
         contract,
         'getExecutableDelayedTx',
@@ -405,8 +405,8 @@ class EthereumHandler {
     logger.info(
       utils.format('Chain {0}: Block height {1}', this.chainName, fromBlock)
     );
-    for (let tokenId in this.omniverseContractContract) {
-      let contract = this.omniverseContractContract[tokenId];
+    for (let tokenId in this.omniverseContract) {
+      let contract = this.omniverseContract[tokenId];
       contract.events
         .TransactionSent({
           fromBlock: fromBlock,
