@@ -78,14 +78,7 @@ class SubstrateHandler {
     for (let i = 0; i < this.messages.length; i++) {
       for (let palletName of this.pallets) {
         let message = this.messages[i];
-        let tokenId = (
-          await substrate.contractCall(
-            this.api,
-            palletName,
-            'tokenIdofMember',
-            [[message.chainId, message.initiatorAddress]]
-          )
-        ).toHuman();
+        let tokenId = this.messages[i].tokenId;
         if (tokenId) {
           let nonce = (
             await substrate.contractCall(
