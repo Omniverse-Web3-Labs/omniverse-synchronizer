@@ -2,9 +2,8 @@ version: '3'
 services:
   CATAGORY-NAME:
     image: 'omniverse/CATAGORY-NAME:VERSION'
-    network_mode: host
-    # volumes:
-      # - '/opt/omniverse/node/CATAGORY/NAME/VERSION/config/.secret:/opt/omniverse/node/config/.secret'
+    volumes:
+      - './config/:/opt/omniverse/node/config/'
     command:
       - 'npm run start'
     logging:
