@@ -197,7 +197,7 @@ class InkHandler {
             }
           }
           delete message.tokenId;
-          logger.error('ink sendOmniverseTransaction', message);
+          logger.debug('ink sendOmniverseTransaction', message);
           let ret = await ink.sendTransaction(
             contract,
             'fungibleToken::sendOmniverseTransaction',

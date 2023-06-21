@@ -85,7 +85,7 @@ class chainHandlerMgr {
     }
 
     if (!found) {
-      logger.error(utils.format('Task for {0} not exists', chainId));
+      logger.info(utils.format('Task for {0} not exists', chainId));
     }
 
     if (task.taskMembers.length == 0) {
