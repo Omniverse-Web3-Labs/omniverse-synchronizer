@@ -8,6 +8,11 @@
     "types": ["uint8", "bytes", "uint256"]
   },
   "networks": {
+    "BTCTEST": {
+      "nodeAddress": "https://btc.getblock.io/14716393-e3ef-4b56-8cd9-9f17fd193684/testnet/",
+      "compatibleChain": "bitcoin",
+      "omniverseChainId": 10
+    },
     "SEPOLIA": {
       "nodeAddress": "wss://sepolia.infura.io/ws/v3/4ca07c417b4644eeba7e136f87711cf1",
       "chainId": 11155111,
