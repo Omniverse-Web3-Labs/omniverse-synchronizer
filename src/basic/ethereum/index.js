@@ -83,7 +83,7 @@ class EthereumHandler {
   async addMessageToList(message, tokenId) {
     let params = [];
     for (let i = 0; i < this.payloadCfg.keys.length; i++) {
-      if (this.payloadCfg.keys[i] == 'bytes') {
+      if (this.payloadCfg.types[i] == 'bytes') {
         params.push(
           utils.toHexString(message.payload[this.payloadCfg.keys[i]])
         );

@@ -28,14 +28,14 @@ class BitcoinHandler {
     for (let i in this.payloadCfg.keys) {
       let key = this.payloadCfg.keys[i];
       let value = message.payload[key];
-      if (key == 'bytes') {
+      if (this.payloadCfg.types[i] == 'bytes') {
         params[key] = (Buffer.from(value).toString('hex'));
       }
       else {
         params[key] = value;
       }
     }
-    
+
     this.messages.push({
         nonce: message.nonce,
         initiateSC: message.initiateSC,
