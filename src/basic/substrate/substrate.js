@@ -27,6 +27,7 @@ module.exports = {
       ({ status, events }) => {
         // console.log(status.isInBlock, status.isFinalized);
         if (status.isInBlock || status.isFinalized) {
+          let err;
           events
             // find/filter for failed events
             .filter(({ event }) => api.events.system.ExtrinsicFailed.is(event))
@@ -48,11 +49,11 @@ module.exports = {
                   // Other, CannotLookup, BadOrigin, no extra info
                   console.log(error.toString());
                 }
-                callback(error);
+                err = error;
               }
             );
           if (status.isInBlock) {
-            callback();
+            callback(err);
           }
         }
       }

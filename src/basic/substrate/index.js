@@ -56,7 +56,7 @@ class SubstrateHandler {
     this.messages = [];
   }
 
-  async addMessageToList(message) {
+  async addMessageToList(message, tokenId) {
     let payload = Assets.enc({
       op: message.payload.op,
       exData: message.payload.exData,
@@ -70,21 +70,15 @@ class SubstrateHandler {
       from: message.from,
       payload: utils.toHexString(Array.from(payload)),
       signature: message.signature,
+      tokenId,
     });
   }
 
-  async pushMessages() {
+  async pushMessages(cbHandler) {
     for (let i = 0; i < this.messages.length; i++) {
       for (let palletName of this.pallets) {
         let message = this.messages[i];
-        let tokenId = (
-          await substrate.contractCall(
-            this.api,
-            palletName,
-            'tokenIdofMember',
-            [[message.chainId, message.initiatorAddress]]
-          )
-        ).toHuman();
+        let tokenId = this.messages[i].tokenId;
         if (tokenId) {
           let nonce = (
             await substrate.contractCall(
@@ -112,7 +106,7 @@ class SubstrateHandler {
               let bCompare =
                 hisData.nonce == message.nonce &&
                 hisData.chainId == message.chainId &&
-                hisData.initiatorAddress == message.initiateSC &&
+                hisData.initiatorAddress == message.initiatorAddress &&
                 hisData.from == message.from &&
                 hisData.payload == message.payload &&
                 hisData.signature == message.signature;
@@ -120,28 +114,22 @@ class SubstrateHandler {
                 this.messages.splice(i, 1);
                 logger.debug(
                   utils.format(
-                    'The message of pk {0}, nonce {1} has been executed on chain {2}',
+                    'The message of pk {0}, nonce {1}, tokenId {3} has been executed on chain {2}',
                     message.from,
                     message.nonce,
-                    this.chainName
+                    this.chainName,
+                    tokenId
                   )
                 );
                 cbHandler.onMessageExecuted(
                   this.omniverseChainId,
                   message.from,
-                  message.nonce
+                  message.nonce,
+                  tokenId
                 );
                 return;
               }
             }
-
-            // await substrate.sendTransaction(
-            //   this.api,
-            //   palletName,
-            //   'sendTransaction',
-            //   this.sender,
-            //   [tokenId, message]
-            // );
             let result = await substrate.enqueueTask(
               this.queue,
               this.api,
@@ -179,7 +167,7 @@ class SubstrateHandler {
           )
         );
         let pk = pendings[i].pk;
-        let tokenId = this.network.tokenId;
+        let tokenId = pendings[i].tokenId;
         let nonce = pendings[i].nonce;
         let palletName = this.network.pallets[0];
         let message = await substrate.contractCall(
@@ -209,11 +197,14 @@ class SubstrateHandler {
             contractAddr: member[1],
           });
         }
-        if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+        if (
+          cbHandler.onMessageSent(this.omniverseChainId, m, members, tokenId)
+        ) {
           this.messageBlockHeights.push({
             from: m.from,
             nonce: m.nonce,
             height: item[1],
+            tokenId,
           });
         }
       } else {
@@ -313,11 +304,20 @@ class SubstrateHandler {
                   contractAddr: member[1],
                 });
               }
-              if (cbHandler.onMessageSent(this.omniverseChainId, m, members)) {
+              // if config.get('networks.' + this.chainName + '.tokenId')
+              if (
+                cbHandler.onMessageSent(
+                  this.omniverseChainId,
+                  m,
+                  members,
+                  tokenId
+                )
+              ) {
                 this.messageBlockHeights.push({
                   from: m.from,
                   nonce: m.nonce,
                   height: blockNumber,
+                  tokenId,
                 });
               }
             } else if (
@@ -332,7 +332,8 @@ class SubstrateHandler {
               cbHandler.onMessageExecuted(
                 this.omniverseChainId,
                 event.data[0].toHuman(),
-                event.data[1].toHuman()
+                event.data[1].toHuman(),
+                event.data[2].toHuman()
               );
             }
           }
@@ -341,12 +342,13 @@ class SubstrateHandler {
     });
   }
 
-  async messageFinalized(from, nonce) {
+  async messageFinalized(from, nonce, tokenId) {
     let height;
     for (let i = 0; i < this.messageBlockHeights.length; i++) {
       if (
         this.messageBlockHeights[i].from == from &&
-        this.messageBlockHeights[i].nonce == nonce
+        this.messageBlockHeights[i].nonce == nonce &&
+        this.messageBlockHeights[i].tokenId == tokenId
       ) {
         height = this.messageBlockHeights[i].height;
         this.messageBlockHeights.splice(i, 1);
@@ -403,7 +405,6 @@ class SubstrateHandler {
       let hash = await this.api.rpc.chain.getBlockHash(
         header.number.toNumber()
       );
-      console.log('Block hash:', hash.toHuman());
 
       await this.getOmniverseEvent(hash, cbHandler);
     });
