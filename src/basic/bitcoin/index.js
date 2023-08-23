@@ -19,15 +19,29 @@ class BitcoinHandler {
 
     this.omniverseChainId = config.get('networks.' + this.chainName + '.omniverseChainId');
     this.messages = [];
+
+    this.payloadCfg = config.get('payload');
   }
 
   async addMessageToList(message) {
+    let params = {};
+    for (let i in this.payloadCfg.keys) {
+      let key = this.payloadCfg.keys[i];
+      let value = message.payload[key];
+      if (key == 'bytes') {
+        params[key] = (Buffer.from(value).toString('hex'));
+      }
+      else {
+        params[key] = value;
+      }
+    }
+    
     this.messages.push({
         nonce: message.nonce,
         initiateSC: message.initiateSC,
         from: message.from,
         chainId: message.chainId,
-        payload: opData,
+        payload: params,
         signature: message.signature,
       });
   }
@@ -36,7 +50,8 @@ class BitcoinHandler {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
       // inscribe
-      await bitcoin.inscribe(JSON.stringify(message));
+      global.logger.debug('push message', message);
+      await bitcoin.sendOmniverseTransaction(message);
       cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce);
     }
   }

@@ -1,11 +1,27 @@
-const fs = require('fs');
-const { execSync } = require("child_process");
+const {ODLT, inscription} = require('../../../../omniverse-btc-lib/dist/index');
+
+inscription.setNetwork(inscription.Network.Regtest);
 
 module.exports = {
-    async inscribe(data) {
-        fs.writeFileSync('./.inscription', data);
-        // Handle the return value here, confirm that it is executed correctly
-        let ret = execSync('ord wallet inscribe --fee-rate 2 .inscription');
-        console.log('ret', ret);
+    /**
+     * 
+     * @param data: {
+     *  nonce:
+     *  initiateSC:
+     *  from:
+     *  chainId:
+     *  payload: {key: value}   // except for bytes/U8Array
+     *  signature:
+     * }
+     */
+    async sendOmniverseTransaction(data) {
+        ODLT.sendOmniverseTransaction({
+            nonce: BigInt(data.nonce),
+            initiateSC: data.initiateSC,
+            from: data.from,
+            chainId: data.chainId,
+            payload: JSON.stringify(data.payload),
+            signature: data.signature,
+        });
     }
 }
