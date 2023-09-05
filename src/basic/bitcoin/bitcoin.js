@@ -1,4 +1,4 @@
-const {ODLT, inscription} = require('../../../../omniverse-btc-lib/dist/index');
+const {ODLT, inscription} = require('@hthuang/bitcoin-lib/dist/index');
 
 inscription.setNetwork(inscription.Network.Regtest);
 
