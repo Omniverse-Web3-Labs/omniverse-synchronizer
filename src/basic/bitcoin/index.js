@@ -53,6 +53,7 @@ class BitcoinHandler {
       global.logger.debug('push message', message);
       await bitcoin.sendOmniverseTransaction(message);
       cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce);
+      this.messages.splice(i, 1);
     }
   }
 
