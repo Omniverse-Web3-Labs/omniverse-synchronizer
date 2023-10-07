@@ -1,6 +1,4 @@
-const {ODLT, inscription} = require('@hthuang/bitcoin-lib/dist/index');
-
-inscription.setNetwork(inscription.Network.Regtest);
+const {ODLT} = require('@hthuang/bitcoin-lib/dist/index');
 
 module.exports = {
     /**

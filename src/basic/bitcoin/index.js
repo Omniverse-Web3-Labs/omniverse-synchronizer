@@ -5,9 +5,20 @@ const fs = require('fs');
 const utils = require('../../utils/utils.js');
 const logger = require('../../utils/logger.js');
 const bitcoin = require('./bitcoin.js');
+const {inscription} = require('@hthuang/bitcoin-lib/dist/index');
 
 class BitcoinHandler {
   constructor(chainName) {
+    let networkType = config.get(`${chainName}.networkType`);
+    if (networkType == 'regtest') {
+      inscription.setNetwork(inscription.Network.Regtest);
+    }
+    else if (networkType == 'testnet') {
+      inscription.setNetwork(inscription.Network.Testnet);
+    }
+    else if (networkType == 'mainnet') {
+      inscription.setNetwork(inscription.Network.Mainnet);
+    }
     this.chainName = chainName;
   }
 
