@@ -9,7 +9,7 @@ const {inscription} = require('@hthuang/bitcoin-lib/dist/index');
 
 class BitcoinHandler {
   constructor(chainName) {
-    let networkType = config.get(`${chainName}.networkType`);
+    let networkType = config.get(`networks.${chainName}.networkType`);
     if (networkType == 'regtest') {
       inscription.setNetwork(inscription.Network.Regtest);
     }
