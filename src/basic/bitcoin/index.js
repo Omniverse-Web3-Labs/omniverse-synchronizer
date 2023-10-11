@@ -5,7 +5,7 @@ const fs = require('fs');
 const utils = require('../../utils/utils.js');
 const logger = require('../../utils/logger.js');
 const bitcoin = require('./bitcoin.js');
-const {inscription} = require('@hthuang/bitcoin-lib/dist/index');
+const {btc, inscription} = require('@hthuang/bitcoin-lib/dist/index');
 
 class BitcoinHandler {
   constructor(chainName) {
@@ -32,6 +32,8 @@ class BitcoinHandler {
     this.messages = [];
 
     this.payloadCfg = config.get('payload');
+
+    btc.setProvider(config.get(`networks.${this.chainName}.url`));
   }
 
   async addMessageToList(message) {
