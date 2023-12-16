@@ -396,12 +396,15 @@ class SubstrateHandler {
     let currentBlockNumber = currentBlock.block.header.number.toJSON();
     this.logger.debug(currentBlockNumber - fromBlock);
     if (fromBlock && currentBlockNumber - fromBlock < 256) {
-      await this.processPastOmniverseEvent(
-        fromBlock,
-        currentBlockNumber,
-        cbHandler
-      );
     }
+    else {
+      fromBlock = currentBlockNumber - 200;
+    }
+    await this.processPastOmniverseEvent(
+      fromBlock,
+      currentBlockNumber,
+      cbHandler
+    );
     await this.api.rpc.chain.subscribeNewHeads(async (header) => {
       this.logger.debug(`\nChain is at block: #${header.number}`);
       let hash = await this.api.rpc.chain.getBlockHash(
