@@ -4,6 +4,7 @@ global.logger = require('./utils/logger');
 global.utils = require('./utils/utils');
 global.stateDB = require('./utils/stateDB');
 const request = require('sync-request');
+global.MainLogger = require('./utils/logger').getLogger('main');
 
 async function init() {
   await chainHandlerMgr.init();
@@ -15,26 +16,26 @@ async function restoreWork() {
 }
 
 async function main() {
-  logger.info("Launch validator node...");
+  MainLogger.info("Launch validator node...");
   await init();
   await restoreWork();
   await chainHandlerMgr.run();
   while (true) {
     await chainHandlerMgr.loop();
-    logger.info(utils.format('Waiting for {0} seconds...', config.get('scanInterval')));
+    MainLogger.info(utils.format('Waiting for {0} seconds...', config.get('scanInterval')));
     await utils.sleep(config.get('scanInterval'));
   }
-  logger.error('Exit main can not be arrived');
+  MainLogger.error('Exit main can not be arrived');
 }
 
 main();
 
 process.on('unhandledRejection', (err) => {
-  logger.error('UnhanledRejection', err);
+  MainLogger.error('UnhanledRejection', err);
   process.exit();
 })
 
 process.on('uncaughtException', (err) => {
-  logger.error('UnhanledException', err);
+  MainLogger.error('UnhanledException', err);
   process.exit();
 })

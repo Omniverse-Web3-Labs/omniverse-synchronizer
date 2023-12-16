@@ -21,8 +21,10 @@ class SubstrateHandler {
     this.queue = queue(substrate.substrateTxWorker, 1);
   }
 
-  async init() {
-    logger.info(
+  async init(hdMgr) {
+    this.hdMgr = hdMgr;
+    this.logger = logger.getLogger(this.chainName.toLowerCase());
+    this.logger.info(
       utils.format(
         'Init handler: {0}, compatible chain: {1}',
         this.chainName,
@@ -102,7 +104,7 @@ class SubstrateHandler {
               )
                 .unwrap()
                 .txData.toJSON();
-              logger.debug('hisData', hisData);
+              this.logger.debug('hisData', hisData);
               let bCompare =
                 hisData.nonce == message.nonce &&
                 hisData.chainId == message.chainId &&
@@ -112,7 +114,7 @@ class SubstrateHandler {
                 hisData.signature == message.signature;
               if (bCompare) {
                 this.messages.splice(i, 1);
-                logger.debug(
+                this.logger.debug(
                   utils.format(
                     'The message of pk {0}, nonce {1}, tokenId {3} has been executed on chain {2}',
                     message.from,
@@ -160,7 +162,7 @@ class SubstrateHandler {
 
       let item = pendings[i].chains.find(checkItem);
       if (item) {
-        logger.debug(
+        this.logger.debug(
           utils.format(
             'Transaction has been pushed to chain {0}',
             this.chainName
@@ -208,7 +210,7 @@ class SubstrateHandler {
           });
         }
       } else {
-        logger.debug(
+        this.logger.debug(
           utils.format(
             'Transaction has not been pushed to chain {0}',
             this.chainName
@@ -264,7 +266,7 @@ class SubstrateHandler {
     const apiAt = await this.api.at(blockHash);
     const blockNumber = (await apiAt.query.system.number()).toJSON();
     await apiAt.query.system.events((events) => {
-      // console.log(`Received ${events.length} events:`);
+      // this.logger.debug(`Received ${events.length} events:`);
 
       // Loop through the Vec<EventRecord>
       events.forEach(async (record) => {
@@ -324,7 +326,7 @@ class SubstrateHandler {
               event.method == 'TransactionExecuted' ||
               event.method == 'TransactionDuplicated'
             ) {
-              logger.debug(
+              this.logger.debug(
                 event.method + ' event',
                 this.omniverseChainId,
                 event.data.toJSON()
@@ -357,7 +359,7 @@ class SubstrateHandler {
     }
 
     if (!height) {
-      // logger.error('The block height should not be null');
+      // this.logger.error('The block height should not be null');
       return;
     }
 
@@ -392,7 +394,7 @@ class SubstrateHandler {
     let fromBlock = this.restoreBlockHeight || stateDB.getValue(this.chainName);
     let currentBlock = await this.api.rpc.chain.getBlock();
     let currentBlockNumber = currentBlock.block.header.number.toJSON();
-    console.log(currentBlockNumber - fromBlock);
+    this.logger.debug(currentBlockNumber - fromBlock);
     if (fromBlock && currentBlockNumber - fromBlock < 256) {
       await this.processPastOmniverseEvent(
         fromBlock,
@@ -401,7 +403,7 @@ class SubstrateHandler {
       );
     }
     await this.api.rpc.chain.subscribeNewHeads(async (header) => {
-      console.log(`\nChain is at block: #${header.number}`);
+      this.logger.debug(`\nChain is at block: #${header.number}`);
       let hash = await this.api.rpc.chain.getBlockHash(
         header.number.toNumber()
       );
@@ -419,13 +421,29 @@ class SubstrateHandler {
       if (this.messageBlockHeights[0].height > currentBlockNumber) {
         stateDB.setValue(self.chainName, currentBlockNumber);
       } else {
-        logger.info(
-          utils.format(
-            'Chain {0}, Message waiting to be finalized, nonce {1}',
-            this.chainName,
-            this.messageBlockHeights[0].nonce
-          )
-        );
+        for (let i = 0; i < this.messageBlockHeights.length; i++) {
+          let nonce = this.messageBlockHeights[i].nonce;
+          let from = this.messageBlockHeights[i].from;
+          let observer = this.hdMgr.getMessageWaitingChain(from, nonce);
+          if (observer) {
+            this.logger.info(
+              utils.format(
+                'Chain {0}, Message waiting to be finalized, from {1}, nonce {2}, observer {3}',
+                this.chainName,
+                from,
+                nonce,
+                JSON.stringify(observer)
+              )
+            );
+          }
+          else {
+            this.logger.error(
+              utils.format('Chain {0}, no observer found, from {1}, nonce {2}', this.chainName, from, nonce)
+            );
+            this.messageBlockHeights.splice(i, 1);
+            return;
+          }
+        }
       }
     }
   }

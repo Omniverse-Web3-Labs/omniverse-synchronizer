@@ -12,32 +12,37 @@ class chainHandlerMgr {
   }
 
   async init() {
-    logger.info('Init chainHandlerMgr');
+    MainLogger.info('Init chainHandlerMgr');
     let networks = config.get('networks');
     for (let i in networks) {
       let network = networks[i];
       let handler = require('./' + network['compatibleChain'] + '/index');
       let inst = new handler(i);
       this.chainHandlers[network.omniverseChainId] = inst;
-      await inst.init();
+      await inst.init(this);
     }
   }
 
   getHandlerByName(name_) {
     if (this.chainHandlers[name_] == null) {
       let stack = new Error().stack;
-      logger.error(
+      MainLogger.error(
         utils.format('Chain handler {0} can not be found, {1}', name_, stack)
       );
     }
     return this.chainHandlers[name_];
   }
 
+  getMessageWaitingChain(from, nonce) {
+    return this.messageObserver[from + nonce];
+  }
+
   onMessageSent(chainId, message, members, tokenId) {
-    logger.debug('Message sent', chainId, message, members, tokenId);
-    if (this.messageObserver[message.from + message.nonce]) {
+    MainLogger.debug('Message sent', chainId, message, members, tokenId);
+    if (this.messageObserver[message.from + message.nonce + tokenId]) {
       return false;
     }
+    MainLogger.info('Add to message observer', message.from, message.nonce, tokenId);
 
     let task = {
       fromChain: chainId,
@@ -66,12 +71,12 @@ class chainHandlerMgr {
   onMessageExecuted(chainId, from, nonce, tokenId) {
     let task = this.messageObserver[from + nonce + tokenId];
     if (!task) {
-      logger.error('This case should not appear');
+      MainLogger.error('This case should not appear');
       return;
     }
 
     if (chainId == task.fromChain) {
-      logger.info('Executed on original chain');
+      MainLogger.info('Executed on original chain');
       return;
     }
 
@@ -85,7 +90,7 @@ class chainHandlerMgr {
     }
 
     if (!found) {
-      logger.info(utils.format('Task for {0} not exists', chainId));
+      MainLogger.info(utils.format('Task for {0} not exists', chainId));
     }
 
     if (task.taskMembers.length == 0) {
@@ -126,13 +131,13 @@ class chainHandlerMgr {
   async update() {
     let updateRequest = [];
     for (let i in this.chainHandlers) {
-      updateRequest.push(this.chainHandlers[i].update());
+      updateRequest.push(this.chainHandlers[i].update(this));
     }
     await Promise.all(updateRequest);
   }
 
   async restore() {
-    logger.info('restore');
+    MainLogger.info('restore');
     if (config.has('database') && config.get('database')) {
       for (let i in this.chainHandlers) {
         await this.chainHandlers[i].beforeRestore();
@@ -143,20 +148,20 @@ class chainHandlerMgr {
           let body = res.getBody();
           let pendings = JSON.parse(body);
           if (pendings.code != 0) {
-            logger.error('Restore failed', pendings.message);
+            MainLogger.error('Restore failed', pendings.message);
             return;
           }
           for (let i in this.chainHandlers) {
             await this.chainHandlers[i].restore(pendings.message, this);
           }
         } else {
-          global.logger.info('Result error', res);
+          MainLogger.info('Result error', res);
         }
       } catch (err) {
-        global.logger.error('connect refuse: ', err.message);
+        MainLogger.error('connect refuse: ', err.message);
       }
     } else {
-      global.logger.info('Database not configured');
+      MainLogger.info('Database not configured');
     }
   }
 }

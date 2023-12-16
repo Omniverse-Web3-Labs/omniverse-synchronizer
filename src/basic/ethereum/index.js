@@ -15,8 +15,10 @@ class EthereumHandler {
     this.chainName = chainName;
   }
 
-  async init() {
-    logger.info(
+  async init(hdMgr) {
+    this.hdMgr = hdMgr;
+    this.logger = logger.getLogger(this.chainName.toLowerCase());
+    this.logger.info(
       utils.format(
         'Init handler: {0}, compatible chain: {1}',
         this.chainName,
@@ -136,7 +138,7 @@ class EthereumHandler {
               hisData[0].signature == message.signature;
             if (bCompare) {
               this.messages.splice(i, 1);
-              logger.debug(
+              this.logger.debug(
                 utils.format(
                   'The message of pk {0}, nonce {1}, tokenId {3} has been executed on chain {2}',
                   message.from,
@@ -166,7 +168,7 @@ class EthereumHandler {
           );
           if (ret) {
             this.messages.splice(i, 1);
-            logger.debug(
+            this.logger.debug(
               utils.format(
                 'The message of pk {0}, nonce {1} has been pushed to chain {2}',
                 message.from,
@@ -177,10 +179,10 @@ class EthereumHandler {
             break;
           }
         } else {
-          logger.info(utils.format('Chain: {0} Cooling down', this.chainName));
+          this.logger.info(utils.format('Chain: {0} Cooling down', this.chainName));
         }
       } else {
-        logger.info('Caching');
+        this.logger.info('Caching');
       }
     }
   }
@@ -193,13 +195,29 @@ class EthereumHandler {
       if (this.messageBlockHeights[0].height > blockNumber) {
         stateDB.setValue(self.chainName, blockNumber);
       } else {
-        logger.info(
-          utils.format(
-            'Chain {0}, Message waiting to be finalized, nonce {1}',
-            this.chainName,
-            this.messageBlockHeights[0].nonce
-          )
-        );
+        for (let i = 0; i < this.messageBlockHeights.length; i++) {
+          let nonce = this.messageBlockHeights[i].nonce;
+          let from = this.messageBlockHeights[i].from;
+          let observer = this.hdMgr.getMessageWaitingChain(from, nonce);
+          if (observer) {
+            this.logger.info(
+              utils.format(
+                'Chain {0}, Message waiting to be finalized, from {1}, nonce {2}, observer {3}',
+                this.chainName,
+                from,
+                nonce,
+                JSON.stringify(observer)
+              )
+            );
+          }
+          else {
+            this.logger.error(
+              utils.format('Chain {0}, no observer found, from {1}, nonce {2}', this.chainName, from, nonce)
+            );
+            this.messageBlockHeights.splice(i, 1);
+            return;
+          }
+        }
       }
     }
   }
@@ -220,13 +238,13 @@ class EthereumHandler {
       if (Object.keys(this.omniverseContract).includes(tokenId)) {
         contract = this.omniverseContract[tokenId];
       } else {
-        logger.error(
+        this.logger.error(
           utils.format('The contract of {0} yet been initialized.', tokenId)
         );
         return;
       }
       if (item) {
-        logger.debug(
+        this.logger.debug(
           utils.format(
             'Transaction has been pushed to chain {0}',
             this.chainName
@@ -238,7 +256,7 @@ class EthereumHandler {
           'getTransactionCount',
           [pendings[i].pk]
         );
-        logger.debug('nonce', nonce);
+        this.logger.debug('nonce', nonce);
         if (nonce > pendings[i].nonce) {
           message = await ethereum.contractCall(
             contract,
@@ -249,9 +267,9 @@ class EthereumHandler {
           message = await ethereum.contractCall(contract, 'transactionCache', [
             pendings[i].pk,
           ]);
-          logger.debug('cached message', message);
+          this.logger.debug('cached message', message);
           if (message.txData.nonce != pendings[i].nonce) {
-            logger.error(
+            this.logger.error(
               utils.format(
                 'Chain {0} Restore work failed, pk {1}, nonce {2}, tokenId {3}',
                 this.chainName,
@@ -263,7 +281,7 @@ class EthereumHandler {
             throw 'Restore failed';
           }
         }
-        logger.debug('Message is', message);
+        this.logger.debug('Message is', message);
         let members = await ethereum.contractCall(contract, 'getMembers', []);
         let data = this.generalizeData(message.txData.payload);
         let m = {
@@ -284,7 +302,7 @@ class EthereumHandler {
           });
         }
       } else {
-        logger.debug(
+        this.logger.debug(
           utils.format(
             'Transaction has not been pushed to chain {0}',
             this.chainName
@@ -303,7 +321,7 @@ class EthereumHandler {
         []
       );
       if (ret.sender != '0x') {
-        logger.debug(
+        this.logger.debug(
           utils.format(
             'Chain {0}, Delayed transaction {1}',
             this.chainName,
@@ -319,9 +337,9 @@ class EthereumHandler {
           []
         );
         if (!receipt) {
-          logger.debug('receipt', receipt);
+          this.logger.debug('receipt', receipt);
         } else {
-          logger.debug(receipt.logs[0].topics, receipt.logs[0].data);
+          this.logger.debug(receipt.logs[0].topics, receipt.logs[0].data);
           for (let i = 0; i < receipt.logs.length; i++) {
             let log = receipt.logs[i];
             if (log.address == contract._address) {
@@ -331,7 +349,7 @@ class EthereumHandler {
                   log.data,
                   log.topics.slice(1)
                 );
-                logger.info(
+                this.logger.info(
                   utils.format(
                     'Execute OmniverseTransfer successfully: {0} transfer {1} to {2}.',
                     decodedLog.from,
@@ -379,7 +397,7 @@ class EthereumHandler {
     }
 
     if (!height) {
-      // logger.error('The block height should not be null');
+      // this.logger.error('The block height should not be null');
       return;
     }
 
@@ -393,7 +411,7 @@ class EthereumHandler {
       fromBlock = 'latest';
     } else {
       if (blockNumber - fromBlock > globalDefine.LogRange) {
-        logger.info(
+        this.logger.info(
           utils.format(
             'Chain {0}: Exceed max log range, subscribe from the latest',
             this.chainName
@@ -402,7 +420,7 @@ class EthereumHandler {
         fromBlock = 'latest';
       }
     }
-    logger.info(
+    this.logger.info(
       utils.format('Chain {0}: Block height {1}', this.chainName, fromBlock)
     );
     for (let tokenId in this.omniverseContract) {
@@ -412,12 +430,12 @@ class EthereumHandler {
           fromBlock: fromBlock,
         })
         .on('connected', (subscriptionId) => {
-          logger.info('TransactionSent connected', subscriptionId);
+          this.logger.info('TransactionSent connected', subscriptionId);
         })
         .on('data', async (event) => {
-          logger.debug('TransactionSent event', event);
+          this.logger.debug('TransactionSent event', event);
           // to be continued, decoding is needed here for omniverse
-          console.log(event.returnValues.pk, event.returnValues.nonce);
+          this.logger.debug(event.returnValues.pk, event.returnValues.nonce);
           let message = await ethereum.contractCall(
             contract,
             'transactionCache',
@@ -427,7 +445,7 @@ class EthereumHandler {
             message.timestamp != 0 &&
             event.returnValues.nonce == message.txData.nonce
           ) {
-            console.log(
+            this.logger.debug(
               utils.format(
                 'Chain: {0}, gets cached transaction',
                 this.chainName
@@ -446,7 +464,7 @@ class EthereumHandler {
                 [event.returnValues.pk, event.returnValues.nonce]
               );
             } else {
-              console.log('No transaction got', this.chainName);
+              this.logger.debug('No transaction got', this.chainName);
               return;
             }
           }
@@ -473,22 +491,22 @@ class EthereumHandler {
         })
         .on('changed', (event) => {
           // remove event from local database
-          logger.info('TransactionSent changed');
-          logger.debug(event);
+          this.logger.info('TransactionSent changed');
+          this.logger.debug(event);
         })
         .on('error', (error, receipt) => {
           // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-          logger.info('TransactionSent error', this.chainName, error);
-          logger.info('TransactionSent receipt', receipt);
+          this.logger.info('TransactionSent error', this.chainName, error);
+          this.logger.info('TransactionSent receipt', receipt);
         });
 
       contract.events
         .TransactionExecuted()
         .on('connected', (subscriptionId) => {
-          logger.info('TransactionExecuted connected', subscriptionId);
+          this.logger.info('TransactionExecuted connected', subscriptionId);
         })
         .on('data', async (event) => {
-          logger.debug('TransactionExecuted event', event);
+          this.logger.debug('TransactionExecuted event', event);
           // to be continued, decoding is needed here for omniverse
           cbHandler.onMessageExecuted(
             this.omniverseChainId,
@@ -499,22 +517,22 @@ class EthereumHandler {
         })
         .on('changed', (event) => {
           // remove event from local database
-          logger.info('TransactionExecuted changed');
-          logger.debug(event);
+          this.logger.info('TransactionExecuted changed');
+          this.logger.debug(event);
         })
         .on('error', (error, receipt) => {
           // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-          logger.info('TransactionExecuted error', this.chainName, error);
-          logger.info('TransactionExecuted receipt', receipt);
+          this.logger.info('TransactionExecuted error', this.chainName, error);
+          this.logger.info('TransactionExecuted receipt', receipt);
         });
 
       contract.events
         .TransactionDuplicated()
         .on('connected', (subscriptionId) => {
-          logger.info('TransactionDuplicated connected', subscriptionId);
+          this.logger.info('TransactionDuplicated connected', subscriptionId);
         })
         .on('data', async (event) => {
-          logger.debug('TransactionDuplicated event', event);
+          this.logger.debug('TransactionDuplicated event', event);
           // to be continued, decoding is needed here for omniverse
           cbHandler.onMessageExecuted(
             this.omniverseChainId,
@@ -525,13 +543,13 @@ class EthereumHandler {
         })
         .on('changed', (event) => {
           // remove event from local database
-          logger.info('TransactionDuplicated changed');
-          logger.debug(event);
+          this.logger.info('TransactionDuplicated changed');
+          this.logger.debug(event);
         })
         .on('error', (error, receipt) => {
           // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-          logger.info('TransactionDuplicated error', this.chainName, error);
-          logger.info('TransactionDuplicated receipt', receipt);
+          this.logger.info('TransactionDuplicated error', this.chainName, error);
+          this.logger.info('TransactionDuplicated receipt', receipt);
         });
     }
   }

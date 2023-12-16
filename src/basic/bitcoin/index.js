@@ -22,8 +22,10 @@ class BitcoinHandler {
     this.chainName = chainName;
   }
 
-  async init() {
-    logger.info(utils.format("Init handler: {0}, compatible chain: {1}", this.chainName, "bitcoin"));
+  async init(hdMgr) {
+    this.hdMgr = hdMgr;
+    this.logger = logger.getLogger(this.chainName.toLowerCase());
+    this.logger.info(utils.format("Init handler: {0}, compatible chain: {1}", this.chainName, "bitcoin"));
     
     let secret = JSON.parse(fs.readFileSync(config.get('secret')));
     this.testAccountPrivateKey = secret[this.chainName];
@@ -36,7 +38,7 @@ class BitcoinHandler {
     btc.setProvider(config.get(`networks.${this.chainName}.url`));
   }
 
-  async addMessageToList(message) {
+  async addMessageToList(message, tokenId) {
     let params = {};
     for (let i in this.payloadCfg.keys) {
       let key = this.payloadCfg.keys[i];
@@ -56,6 +58,7 @@ class BitcoinHandler {
         chainId: message.chainId,
         payload: params,
         signature: message.signature,
+        tokenId,
       });
   }
 
@@ -63,9 +66,9 @@ class BitcoinHandler {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
       // inscribe
-      global.logger.debug('push message', message);
+      this.logger.debug('push bitcoin message', message);
       await bitcoin.sendOmniverseTransaction(message);
-      cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce);
+      cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce, message.tokenId);
       this.messages.splice(i, 1);
     }
   }
@@ -83,7 +86,7 @@ class BitcoinHandler {
   }
 
   async messageFinalized(from, nonce) {
-    logger.warn(this.chainName, 'messageFinalized should not be triggered');
+    this.logger.warn(this.chainName, 'messageFinalized should not be triggered');
   }
 
   async start(cbHandler) {

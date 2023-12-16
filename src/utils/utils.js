@@ -2,7 +2,6 @@
 
 const globalDefine = require("./globalDefine");
 const assert = require('assert');
-const logger = require("./logger");
 
 async function sleep(seconds) {
     await new Promise((resolve) => {
@@ -53,7 +52,7 @@ function toByteArray(hexString) {
 
 // Checkout if the format of a message is correct
 function checkMessageFormat(message) {
-    logger.debug('checkMessageFormat', message, message.content.data);
+    MainLogger.debug('checkMessageFormat', message, message.content.data);
     assert(typeof(message.id) == 'string');
     assert(typeof(message.fromChain) == 'string');
     assert(typeof(message.toChain) == 'string');

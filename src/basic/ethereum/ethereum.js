@@ -29,7 +29,7 @@ module.exports = {
       // console.log('gasUsed: ' + methodName + ' ' + ret.gasUsed);
       return ret;
     } catch (e) {
-      logger.error(e);
+      MainLogger.error(e);
     }
   },
   // query info from blockchain node

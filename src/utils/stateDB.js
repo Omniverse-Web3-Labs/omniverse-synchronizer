@@ -13,7 +13,7 @@ class stateDB {
             this.state = JSON.parse(fs.readFileSync(path));
         }
         catch (e) {
-            logger.info('File not exist');
+            MainLogger.info('File not exist');
             this.state = {};
         }
     }
