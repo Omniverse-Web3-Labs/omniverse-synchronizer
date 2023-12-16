@@ -33,8 +33,8 @@ class chainHandlerMgr {
     return this.chainHandlers[name_];
   }
 
-  getMessageWaitingChain(from, nonce) {
-    return this.messageObserver[from + nonce];
+  getMessageWaitingChain(from, nonce, tokenId) {
+    return this.messageObserver[from + nonce + tokenId];
   }
 
   onMessageSent(chainId, message, members, tokenId) {

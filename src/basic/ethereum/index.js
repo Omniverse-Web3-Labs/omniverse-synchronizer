@@ -198,7 +198,8 @@ class EthereumHandler {
         for (let i = 0; i < this.messageBlockHeights.length; i++) {
           let nonce = this.messageBlockHeights[i].nonce;
           let from = this.messageBlockHeights[i].from;
-          let observer = this.hdMgr.getMessageWaitingChain(from, nonce);
+          let tokenId = this.messageBlockHeights[i].tokenId;
+          let observer = this.hdMgr.getMessageWaitingChain(from, nonce, tokenId);
           if (observer) {
             this.logger.info(
               utils.format(
