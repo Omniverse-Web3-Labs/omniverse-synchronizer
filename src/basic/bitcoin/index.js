@@ -67,7 +67,7 @@ class BitcoinHandler {
       let message = this.messages[i];
       let nonce = await utils.syncRequest(config.get(`networks.${this.chainName}.server`) + `api/getTransactionCount?pk=${message.from}`, 'GET');
       this.logger.info('nonce', nonce);
-      if (nonce >= message.nonce) {
+      if (parseInt(nonce.result) >= parseInt(message.nonce)) {
         // inscribe
         this.logger.debug('push bitcoin message', message);
         await bitcoin.sendOmniverseTransaction(message);
