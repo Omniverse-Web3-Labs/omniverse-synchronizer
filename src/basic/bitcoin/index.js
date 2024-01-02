@@ -65,11 +65,17 @@ class BitcoinHandler {
   async pushMessages(cbHandler) {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
-      // inscribe
-      this.logger.debug('push bitcoin message', message);
-      await bitcoin.sendOmniverseTransaction(message);
-      cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce, message.tokenId);
-      this.messages.splice(i, 1);
+      let nonce = await utils.syncRequest(config.get(`networks.${this.chainName}.server`), '/api/getTransactionCount', {pk: message.from});
+      if (nonce >= message.nonce) {
+        // inscribe
+        this.logger.debug('push bitcoin message', message);
+        await bitcoin.sendOmniverseTransaction(message);
+        cbHandler.onMessageExecuted(this.omniverseChainId, message.from, message.nonce, message.tokenId);
+        this.messages.splice(i, 1);
+      }
+      else {
+        this.logger.info('Caching');
+      }
     }
   }
 

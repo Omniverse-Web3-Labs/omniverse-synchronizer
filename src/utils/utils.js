@@ -1,6 +1,7 @@
 'use strict';
 
 const globalDefine = require("./globalDefine");
+const request = require('request');
 const assert = require('assert');
 
 async function sleep(seconds) {
@@ -97,6 +98,32 @@ function snakeToCamel(object) {
     return newObject;
 }
 
+async function sleep(seconds) {
+  await new Promise((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, seconds * 1000);
+  });
+}
+
+async function syncRequest(url, method, body) {
+  let options = {
+    url: url,
+    method: method,
+    json: true,
+    body: body,
+  };
+  return new Promise(function (resolve, reject) {
+    request(options, function (error, response, body) {
+      if (!error && response.statusCode === 200) {
+        resolve(body);
+      } else {
+        reject(error);
+      }
+    });
+  });
+}
+
 module.exports = {
     sleep: sleep,
     toHexString: toHexString,
@@ -106,4 +133,5 @@ module.exports = {
     checkMessageFormat: checkMessageFormat,
     camelToSnake,
     snakeToCamel,
+    syncRequest,
 }
