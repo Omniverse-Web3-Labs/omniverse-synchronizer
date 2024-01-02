@@ -65,7 +65,7 @@ class BitcoinHandler {
   async pushMessages(cbHandler) {
     for (let i = 0; i < this.messages.length; i++) {
       let message = this.messages[i];
-      let nonce = await utils.syncRequest(config.get(`networks.${this.chainName}.server`), '/api/getTransactionCount', {pk: message.from});
+      let nonce = await utils.syncRequest(config.get(`networks.${this.chainName}.server`) + 'api/getTransactionCount', 'GET', {pk: message.from});
       if (nonce >= message.nonce) {
         // inscribe
         this.logger.debug('push bitcoin message', message);
