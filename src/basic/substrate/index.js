@@ -276,8 +276,12 @@ class SubstrateHandler {
         this.pallets.forEach(async (palletName) => {
           if (event.section == palletName) {
             if (event.method == 'TransactionSent') {
-              let pk = event.data[0].toHuman();
+              let tokenIds = config.get('networks.' + this.chainName + '.tokenId');
               let tokenId = event.data[1].toHuman();
+              if (tokenIds.find((item) => tokenId == item) == undefined) {
+                return;
+              }
+              let pk = event.data[0].toHuman();
               let nonce = event.data[2].toHuman();
               let message = await substrate.contractCall(
                 this.api,
@@ -387,7 +391,6 @@ class SubstrateHandler {
       let hash = await this.api.rpc.chain.getBlockHash(startBlock);
       await this.getOmniverseEvent(hash, cbHandler);
     }
-    this.messageBlockHeights = [];
   }
 
   async start(cbHandler) {
