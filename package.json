@@ -16,6 +16,7 @@
     "log4js": "^6.7.0",
     "scale-ts": "^0.2.11",
     "sync-request": "^6.1.0",
+    "typescript": "^5.4.5",
     "web3": "^1.8.0"
   }
 }
