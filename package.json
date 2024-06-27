@@ -10,13 +10,23 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-kms": "^3.600.0",
     "@polkadot/api": "^9.10.4",
+    "asn1js": "^3.0.5",
     "async": "^3.2.4",
+    "axios": "^1.7.2",
     "config": "^3.3.8",
+    "ethers-eip712": "^0.2.0",
     "log4js": "^6.7.0",
+    "rlp": "^3.0.0",
     "scale-ts": "^0.2.11",
+    "secp256k1": "^5.0.0",
     "sync-request": "^6.1.0",
     "typescript": "^5.4.5",
-    "web3": "^1.8.0"
+    "web3": "^4.10.0"
+  },
+  "devDependencies": {
+    "@types/config": "^3.3.4",
+    "@types/secp256k1": "^4.0.6"
   }
 }

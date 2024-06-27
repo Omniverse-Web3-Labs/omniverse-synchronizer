@@ -1,9 +1,9 @@
 import { Signer } from './Signer';
 
 export class MPCSigner implements Signer {
-    constructor() {}
+  constructor() {}
 
-    sign(hash: Buffer): string {
-        return '';
-    }
+  async sign(hash: Buffer): Promise<string> {
+    return '';
+  }
 }
