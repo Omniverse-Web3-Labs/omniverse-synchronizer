@@ -56,7 +56,7 @@ export interface UnsignedTx {
 }
 
 export interface SignedTx {
-  txIndex: string;
+  txid: string;
   txType: OmniTxType;
   txData: string;
   signature: string;

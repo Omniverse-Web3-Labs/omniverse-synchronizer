@@ -46,11 +46,11 @@ export class SynchronizerMain {
           await this.contractConnector.getTransactionByIndex(
             nextTransactionIndex,
           );
-        console.log('Unsigned transaction found', signedTx);
-        if (await this.server.containsTx(signedTx.txIndex)) {
+        console.log('SignedTx transaction found', signedTx);
+        if (await this.server.containsTx(signedTx.txid)) {
           console.log(
             'txid:',
-            signedTx.txIndex,
+            signedTx.txid,
             ', index:',
             nextTransactionIndex,
             ', already synchronized',
@@ -58,11 +58,11 @@ export class SynchronizerMain {
         } else {
           let tx;
           if (signedTx.txType == OmniTxType.Transfer) {
-            tx = new OmniverseTransfer(signedTx.txIndex, signedTx.txData);
+            tx = new OmniverseTransfer(signedTx.txid, signedTx.txData);
           } else if (signedTx.txType == OmniTxType.Mint) {
-            tx = new OmniverseMint(signedTx.txIndex, signedTx.txData);
+            tx = new OmniverseMint(signedTx.txid, signedTx.txData);
           } else if (signedTx.txType == OmniTxType.Deploy) {
-            tx = new OmniverseDeploy(signedTx.txIndex, signedTx.txData);
+            tx = new OmniverseDeploy(signedTx.txid, signedTx.txData);
           }
           if (tx) {
             let txEIP712Hash = tx.getEIP712Hash();

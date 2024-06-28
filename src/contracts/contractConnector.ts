@@ -95,7 +95,7 @@ export class ContractConnector {
       this.localEntry,
       config.get('contracts.omniverseAA.signer'),
       'submitTx',
-      [tx.txIndex, tx.signature],
+      [tx.txid, tx.signature],
       this.signer,
     );
   }
