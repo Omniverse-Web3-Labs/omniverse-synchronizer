@@ -10,9 +10,9 @@ export default class OmniverseDeploy extends OmniverseTransactionBase {
   metadata: DeployMetadata;
   sysConfig: IConfig;
 
-  constructor(_txIndex: string, txData: string) {
+  constructor(_txid: string, txData: string) {
     super();
-    this.txIndex = _txIndex;
+    this.txid = _txid;
     this.rawTxData = txData;
     this.sysConfig = config;
     try {
@@ -88,7 +88,7 @@ export default class OmniverseDeploy extends OmniverseTransactionBase {
     const hash = Buffer.from(this.getEIP712Hash(), 'hex');
     const signature = await signer.sign(hash);
     return {
-      txIndex: this.txIndex,
+      txid: this.txid,
       txType: OmniTxType.Deploy,
       txData: this.rawTxData,
       signature: signature,

@@ -18,19 +18,19 @@ export default class OmniverseTransfer extends OmniverseTransactionBase {
   outputs: Array<Output>;
   sysConfig: IConfig;
 
-  constructor(_txIndex: string, txData: string) {
+  constructor(_txid: string, txData: string) {
     super();
-    this.txIndex = _txIndex;
+    this.txid = _txid;
     this.rawTxData = txData;
     this.sysConfig = config;
     try {
       const params = eth.abi.decodeParameters(ABI_TRANSFER_TYPE, txData);
-      const mint: Transfer = params.transfer as Transfer;
-      this.assetId = mint.assetId;
-      this.inputs = mint.inputs;
-      this.outputs = mint.outputs;
-      this.feeInputs = mint.feeInputs;
-      this.feeOuputs = mint.feeOutputs;
+      const transfer: Transfer = params.transfer as Transfer;
+      this.assetId = transfer.assetId;
+      this.inputs = transfer.inputs;
+      this.outputs = transfer.outputs;
+      this.feeInputs = transfer.feeInputs;
+      this.feeOuputs = transfer.feeOutputs;
     } catch (e) {
       throw new Error('Transfer transaction data error');
     }
@@ -92,7 +92,7 @@ export default class OmniverseTransfer extends OmniverseTransactionBase {
     const hash = Buffer.from(this.getEIP712Hash(), 'hex');
     const signature = await signer.sign(hash);
     return {
-      txIndex: this.txIndex,
+      txid: this.txid,
       txType: OmniTxType.Transfer,
       txData: this.rawTxData,
       signature: signature,

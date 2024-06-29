@@ -16,9 +16,9 @@ export default class OmniverseMint extends OmniverseTransactionBase {
   outputs: Array<Output>;
   sysConfig: IConfig;
 
-  constructor(_txIndex: string, txData: string) {
+  constructor(_txid: string, txData: string) {
     super();
-    this.txIndex = _txIndex;
+    this.txid = _txid;
     this.rawTxData = txData;
     this.sysConfig = config;
     try {
@@ -87,7 +87,7 @@ export default class OmniverseMint extends OmniverseTransactionBase {
     const hash = Buffer.from(this.getEIP712Hash(), 'hex');
     const signature = await signer.sign(hash);
     return {
-      txIndex: this.txIndex,
+      txid: this.txid,
       txType: OmniTxType.Mint,
       txData: this.rawTxData,
       signature: signature,

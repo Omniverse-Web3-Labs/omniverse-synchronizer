@@ -24,7 +24,7 @@ export abstract class OmniverseTransactionBase implements OmniverseTx {
   feeOuputs: Array<Output> = [];
   signature: string = '';
   rawTxData: string = '';
-  txIndex: string = '';
+  txid: string = '';
 
   abstract getEIP712Hash(): string;
   abstract getTxType(): OmniTxType;

@@ -16,9 +16,30 @@ function hexStringtoBytesArray(hexString: string) {
 
   let result = [];
   for (let i = 0; i < hexString.length; i += 2) {
-    result.push(parseInt(hexString.substring(i, 2), 16));
+    result.push(parseInt(hexString.substring(i, i + 2), 16));
   }
   return result;
 }
 
-export { sleep, hexStringtoBytesArray };
+function toObject(data: any, key: any): any {
+  if (Array.isArray(data)) {
+    return data.map((item: any) => toObject(item, key));
+  } else if (typeof data === 'object' && data !== null) {
+    const filteredData: any = {};
+    Object.keys(data).forEach((key: any) => {
+      if (isNaN(key) && key !== '__length__') {
+        filteredData[key] = toObject(data[key], key);
+      }
+    });
+    return filteredData;
+  } else if (typeof data === 'bigint') {
+    if (key == 'index') {
+      return Number(data);
+    }
+    return data.toString();
+  } else {
+    return data;
+  }
+}
+
+export { sleep, hexStringtoBytesArray, toObject };

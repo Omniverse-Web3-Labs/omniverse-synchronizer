@@ -21,10 +21,9 @@ export class SynchronizerMain {
   storage: Storage;
   server: OmniverseServer;
 
-  constructor(storage: Storage, server: OmniverseServer) {
-    // this.omniverseTxFactory = new OmniverseTransactionFactory();
-    this.signer = new KMSSigner();
-    this.contractConnector = new ContractConnector(this.signer);
+  constructor(signer: Signer, storage: Storage, server: OmniverseServer) {
+    this.signer = signer;
+    this.contractConnector = new ContractConnector(signer);
     this.storage = storage;
     this.server = server;
   }
@@ -33,14 +32,13 @@ export class SynchronizerMain {
 
   async mainLoop() {
     try {
-      let nextTransactionIndex: bigint =
-        this.storage.getLatestTransactionIndex();
-      if (nextTransactionIndex > BigInt(0)) {
-        nextTransactionIndex += BigInt(1);
+      let nextTransactionIndex: bigint = BigInt(0);
+      let latestTransactionIndex = this.storage.getLatestTransactionIndex();
+      if (latestTransactionIndex !== null) {
+        nextTransactionIndex = latestTransactionIndex + BigInt(1);
       }
       const signedTxNumber =
         await this.contractConnector.getTransactionNumber();
-      console.log(signedTxNumber);
       if (signedTxNumber > nextTransactionIndex) {
         let signedTx =
           await this.contractConnector.getTransactionByIndex(
@@ -66,17 +64,23 @@ export class SynchronizerMain {
           }
           if (tx) {
             let txEIP712Hash = tx.getEIP712Hash();
-            let signature = await this.signer.sign(Buffer.from(txEIP712Hash));
+            let sychronizerSignature = await this.signer.sign(
+              Buffer.from(txEIP712Hash, 'hex'),
+            );
             await this.server.sendTransaction(
               signedTx.txType,
               signedTx.txData,
-              signature,
+              signedTx.signature,
+              sychronizerSignature,
             );
           }
         }
+        this.storage.storeLatestTransactionIndex(nextTransactionIndex);
+      } else {
+        console.log('no new tx');
       }
     } catch (error: any) {
-      console.error('Main loop catch error: ', error.message);
+      console.error('Main loop catch error: ', error.stack);
     }
   }
 

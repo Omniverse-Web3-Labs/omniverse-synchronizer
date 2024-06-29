@@ -1,7 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 const { create } = axios;
-import { Deploy, Mint, Transfer } from '../utils';
-import { OmniTxType } from '../utils/types';
+import { Deploy, Mint, Transfer, OmniTxType, toObject } from '../utils';
 import { eth } from 'web3';
 
 import {
@@ -9,6 +8,7 @@ import {
   ABI_MINT_TYPE,
   ABI_TRANSFER_TYPE,
 } from '../utils/types';
+import {} from '../utils';
 
 export class OmniverseServer {
   url: string;
@@ -20,21 +20,17 @@ export class OmniverseServer {
   }
 
   async rpc(method: string, params: any[]): Promise<any> {
-    try {
-      let response = await this.post({
-        jsonrpc: '2.0',
-        method: method,
-        params,
-        id: new Date().getTime(),
-      });
-      if (response.error) {
-        console.error('request error: ', response.error);
-      }
-      return response.result;
-    } catch (e) {
-      console.error('network error: ' + e);
-      throw e;
+    let response = await this.post({
+      jsonrpc: '2.0',
+      method: method,
+      params,
+      id: new Date().getTime(),
+    });
+    if (response.error) {
+      console.error('request error: ', response.error);
+      throw Error(response.error.message);
     }
+    return response.result;
   }
 
   async post(params: Object): Promise<any> {
@@ -55,30 +51,38 @@ export class OmniverseServer {
     txType: OmniTxType,
     txRawData: string,
     signature: string,
+    synchronizerSignature: string,
   ) {
     let tx;
     if (txType == OmniTxType.Deploy) {
-      let txData = eth.abi.decodeParameters(ABI_DEPLOY_TYPE, txRawData)
-        .deploy as Deploy;
+      let result = eth.abi.decodeParameters(ABI_DEPLOY_TYPE, txRawData).deploy;
+      let txData = toObject(result, null);
+      txData.signature = signature;
       tx = {
         ...txData,
         type: 'Deploy',
       };
     } else if (txType == OmniTxType.Mint) {
-      let txData = eth.abi.decodeParameters(ABI_MINT_TYPE, txRawData)
-        .mint as Mint;
+      let result = eth.abi.decodeParameters(ABI_MINT_TYPE, txRawData).mint;
+      let txData = toObject(result, null);
+      txData.signature = signature;
       tx = {
         ...txData,
         type: 'Mint',
       };
     } else if (txType == OmniTxType.Transfer) {
-      let txData = eth.abi.decodeParameters(ABI_TRANSFER_TYPE, txRawData)
-        .transfer as Transfer;
+      let result = eth.abi.decodeParameters(
+        ABI_TRANSFER_TYPE,
+        txRawData,
+      ).transfer;
+      let txData = toObject(result, null);
+      txData.signature = signature;
       tx = {
         ...txData,
         type: 'Transfer',
       };
     }
-    await this.rpc('sendTransaction', [tx, signature]);
+    // console.log(tx, synchronizerSignature);
+    await this.rpc('sendTransaction', [tx, synchronizerSignature]);
   }
 }

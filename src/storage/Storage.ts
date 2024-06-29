@@ -2,7 +2,7 @@ export interface Storage {
   /**
    * @notice Returns the latest synchronized transaction index
    */
-  getLatestTransactionIndex(): bigint;
+  getLatestTransactionIndex(): bigint | null;
 
   /**
    * @notice Stores the latest synchronized transaction index

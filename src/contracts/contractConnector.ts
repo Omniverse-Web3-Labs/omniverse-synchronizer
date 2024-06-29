@@ -48,13 +48,12 @@ export class ContractConnector {
     }
   }
 
-  async getTransactionByIndex(index: bigint): Promise<SignedTx> {
+  async getTransactionByIndex(index: bigint): Promise<any> {
     const result = (await contractCall(
       this.localEntry,
       'getTransactionByIndex',
       [index],
     )) as any;
-    console.log(result);
     return result[1];
   }
 

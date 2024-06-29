@@ -13,14 +13,15 @@ export default class OmniverseTransactionFactory {
    * @return Omniverse transaction instance
    */
   generate(tx: UnsignedTx): OmniverseTx | null {
-    let ret: OmniverseTx | null = null;
-    if (tx.txType == OmniTxType.Deploy) {
-      ret = new OmniverseDeploy(tx.txIndex, tx.txData);
-    } else if (tx.txType == OmniTxType.Mint) {
-      ret = new OmniverseMint(tx.txIndex, tx.txData);
-    } else if (tx.txType == OmniTxType.Transfer) {
-      ret = new OmniverseTransfer(tx.txIndex, tx.txData);
-    }
-    return ret;
+    // let ret: OmniverseTx | null = null;
+    // if (tx.txType == OmniTxType.Deploy) {
+    //   ret = new OmniverseDeploy(tx.txIndex, tx.txData);
+    // } else if (tx.txType == OmniTxType.Mint) {
+    //   ret = new OmniverseMint(tx.txIndex, tx.txData);
+    // } else if (tx.txType == OmniTxType.Transfer) {
+    //   ret = new OmniverseTransfer(tx.txIndex, tx.txData);
+    // }
+    // return ret;
+    return null;
   }
 }
