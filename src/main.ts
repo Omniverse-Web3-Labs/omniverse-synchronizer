@@ -67,12 +67,17 @@ export class SynchronizerMain {
             let sychronizerSignature = await this.signer.sign(
               Buffer.from(txEIP712Hash, 'hex'),
             );
-            await this.server.sendTransaction(
-              signedTx.txType,
-              signedTx.txData,
-              signedTx.signature,
-              sychronizerSignature,
-            );
+            // TODO: handle wong tx
+            try {
+              await this.server.sendTransaction(
+                signedTx.txType,
+                signedTx.txData,
+                signedTx.signature,
+                sychronizerSignature,
+              );
+            } catch (error: any) {
+              console.error('Send transaction failed', error.stack);
+            }
           }
         }
         this.storage.storeLatestTransactionIndex(nextTransactionIndex);
