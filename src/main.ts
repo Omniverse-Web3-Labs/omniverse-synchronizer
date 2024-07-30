@@ -72,7 +72,6 @@ export class SynchronizerMain {
               await this.server.sendTransaction(
                 signedTx.txType,
                 signedTx.txData,
-                signedTx.signature,
                 sychronizerSignature,
               );
             } catch (error: any) {

@@ -50,14 +50,12 @@ export class OmniverseServer {
   async sendTransaction(
     txType: OmniTxType,
     txRawData: string,
-    signature: string,
     synchronizerSignature: string,
   ) {
     let tx;
     if (txType == OmniTxType.Deploy) {
       let result = eth.abi.decodeParameters(ABI_DEPLOY_TYPE, txRawData).deploy;
       let txData = toObject(result, null);
-      txData.signature = signature;
       tx = {
         ...txData,
         type: 'Deploy',
@@ -65,7 +63,6 @@ export class OmniverseServer {
     } else if (txType == OmniTxType.Mint) {
       let result = eth.abi.decodeParameters(ABI_MINT_TYPE, txRawData).mint;
       let txData = toObject(result, null);
-      txData.signature = signature;
       tx = {
         ...txData,
         type: 'Mint',
@@ -76,7 +73,6 @@ export class OmniverseServer {
         txRawData,
       ).transfer;
       let txData = toObject(result, null);
-      txData.signature = signature;
       tx = {
         ...txData,
         type: 'Transfer',
