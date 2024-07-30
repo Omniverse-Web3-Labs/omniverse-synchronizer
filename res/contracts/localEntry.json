@@ -1,7 +1,18 @@
 {
   "abi": [
     {
-      "inputs": [],
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_eip712",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_poseidon",
+          "type": "address"
+        }
+      ],
       "stateMutability": "nonpayable",
       "type": "constructor"
     },
@@ -45,6 +56,22 @@
     {
       "inputs": [
         {
+          "internalType": "bytes",
+          "name": "pubkey",
+          "type": "bytes"
+        },
+        {
+          "internalType": "address",
+          "name": "AAContract",
+          "type": "address"
+        }
+      ],
+      "name": "PublicKeyNotBoundToAAContract",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "sender",
           "type": "address"
@@ -61,19 +88,27 @@
           "type": "bytes32"
         }
       ],
-      "name": "SignatureEmpty",
+      "name": "TransactionExists",
       "type": "error"
     },
     {
       "inputs": [
         {
-          "internalType": "bytes32",
-          "name": "txid",
-          "type": "bytes32"
+          "internalType": "bytes",
+          "name": "pubkey",
+          "type": "bytes"
         }
       ],
-      "name": "TransactionExists",
-      "type": "error"
+      "name": "getAAContract",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "AAContract",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
     },
     {
       "inputs": [
@@ -125,11 +160,6 @@
               "internalType": "bytes",
               "name": "txData",
               "type": "bytes"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
             }
           ],
           "internalType": "struct SignedTx",
@@ -170,11 +200,6 @@
             {
               "internalType": "bytes",
               "name": "txData",
-              "type": "bytes"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
               "type": "bytes"
             }
           ],
@@ -220,31 +245,19 @@
     {
       "inputs": [
         {
-          "components": [
-            {
-              "internalType": "bytes32",
-              "name": "txid",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "enum Types.TxType",
-              "name": "txType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes",
-              "name": "txData",
-              "type": "bytes"
-            },
-            {
-              "internalType": "bytes",
-              "name": "signature",
-              "type": "bytes"
-            }
-          ],
-          "internalType": "struct SignedTx",
-          "name": "signedTx",
-          "type": "tuple"
+          "internalType": "enum Types.TxType",
+          "name": "txType",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes",
+          "name": "txData",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "pubkey",
+          "type": "bytes"
         }
       ],
       "name": "submitTx",
