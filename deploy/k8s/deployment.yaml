@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omniverse-synchronizer
+  labels:
+    app: omniverse-synchronizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: omniverse-synchronizer
+  template:
+    metadata:
+      labels:
+        app: omniverse-synchronizer
+    spec:
+      containers:
+      - name: omniverse-synchronizer
+        image: 171678255258.dkr.ecr.ap-southeast-1.amazonaws.com/omni/omniverse-synchronizer:latest
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config/default.json
+          subPath:  default.json
+        - name: secret-volume
+          mountPath: /app/config/.secret
+          subPath: .secret
+        # - name: state-volume
+        #   mountPath: /app/.state
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 0m
+            memory: 50Mi
+      volumes:
+      - name: config-volume
+        configMap:
+          name: omniverse-synchronizer-config
+      - name: secret-volume
+        secret:
+          secretName: omniverse-synchronizer-secret
+      # - name: state-volume
+      #   hostPath:
+      #     path: /root/omniverse-synchronizer/.state
+      #     type: File
+        
+      

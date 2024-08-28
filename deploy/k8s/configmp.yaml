@@ -1,0 +1,47 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: omniverse-synchronizer-config
+  labels:
+    app: omniverse-synchronizer
+data:
+  default.json: |
+    {
+      "scanInterval": 10,
+      "EIP712": {
+        "name": "Omniverse Transaction",
+        "version": "1",
+        "chainId": 1234,
+        "verifyingContract": "0x5B8dC8Ea84BF7E4d8037fe958de655283a292BB4"
+      },
+      "contracts": {
+        "localEntry": {
+          "contractAbiPath": "./res/contracts/localEntry.json",
+          "contractAddress": "0xd5BCADD90EA2dfC60B15eC72Cbc25fc65510124B",
+          "chainId": "1234",
+          "nodeAddress": "http://geth-pos:8545",
+          "signer": ""
+        }
+      },
+      "signer": {
+        "KMS": {
+          "region": "us-east-1",
+          "keyId": "arn:aws:kms:us-east-1:171678255258:key/xxxxxxxx-6325-4872-xxxx-2edd96d1458f"
+        }
+      },
+      "omniverseServer": {
+        "rpc": "http://omniverse-server-service"
+      },
+      "secret": "config/.secret"
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: omniverse-synchronizer-secret
+  labels:
+    app: omniverse-synchronizer
+type: Opaque
+data:
+  .secret: xxxxxxx # Replace this with the base64 encoded value of your secret
