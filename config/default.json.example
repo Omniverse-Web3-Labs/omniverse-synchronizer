@@ -1,0 +1,28 @@
+{
+  "scanInterval": 10,
+  "EIP712": {
+    "name": "Omniverse Transaction",
+    "version": "1",
+    "chainId": 1337,
+    "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
+  },
+  "contracts": {
+    "localEntry": {
+      "contractAbiPath": "./res/contracts/localEntry.json",
+      "contractAddress": "",
+      "chainId": "1337",
+      "nodeAddress": "http://127.0.0.1:8545",
+      "signer": ""
+    }
+  },
+  "signer": {
+    "KMS": {
+      "region": "us-east-1",
+      "keyId": "arn:aws:kms:us-east-1:171678255258:key/xxxxxxxx-6325-4872-xxxx-2edd96d1458f"
+    }
+  },
+  "omniverseServer": {
+    "rpc": "http://127.0.0.1:6358"
+  },
+  "secret": "config/.secret"
+}
