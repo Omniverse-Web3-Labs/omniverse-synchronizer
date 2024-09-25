@@ -1,0 +1,22 @@
+# .github/workflows/release.yml
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'The tag name for the release'
+        required: true
+        type: string
+      prerelease:
+        description: 'Is this a prerelease?'
+        required: true
+        type: boolean
+
+jobs:
+  call-reusable-release:
+    uses: Omniverse-Web3-Labs/omniverse-ci-cd/.github/workflows/reusable-release.yml@main  # 调用复用工作流
+    with:
+      tag_name: ${{ inputs.tag_name }}  
+      prerelease: ${{ inputs.prerelease }}  
+    secrets: inherit  # 继承当前仓库的所有 secrets
