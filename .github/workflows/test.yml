@@ -1,0 +1,12 @@
+# test.yml
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'release/*'
+
+jobs:
+  unit-test:
+    uses: Omniverse-Web3-Labs/omniverse-ci-cd/.github/workflows/reusable-unit-test-js.yml@main  # 调用复用工作流

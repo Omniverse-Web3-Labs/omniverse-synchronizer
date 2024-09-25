@@ -1,0 +1,13 @@
+# .github/workflows/bugfix.yml
+name: Bugfix Workflow
+
+on:
+  push:
+    branches:
+      - release/**   # 监听所有 release 分支的推送事件
+  workflow_dispatch:
+
+jobs:
+  call-reusable-bugfix:
+    uses: Omniverse-Web3-Labs/omniverse-ci-cd/.github/workflows/reusable-bugfix.yml@main  # 调用复用工作流 
+    secrets: inherit  # 继承当前仓库的所有 secrets
