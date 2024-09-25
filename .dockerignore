@@ -1,0 +1,9 @@
+config
+node_modules
+dist
+Dockerfile
+.dockerignore
+test
+scripts
+.gitignore
+LICENSE
