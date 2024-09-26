@@ -37,6 +37,9 @@ COPY --from=builder /app/dist ./dist
 # copy package*.json
 COPY package*.json ./
 
+# copy res
+COPY res ./
+
 # copy dependencies
 COPY --from=builder /production/node_modules ./node_modules
 
